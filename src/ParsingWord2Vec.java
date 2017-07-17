@@ -20,7 +20,7 @@ public class ParsingWord2Vec {
 	public static void main(String[] args) throws IOException {
 		//printCosineSimilarity("Obama", "banana"); 
 		
-		String query = "halloween";
+		String query = "dream";
 		ArrayList<WordDistance> nearQuery = wordsCloseTo(query, 10, 5000);
 		System.out.println(nearQuery.toString());
 	}
