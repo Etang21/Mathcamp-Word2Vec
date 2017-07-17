@@ -4,24 +4,27 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.math.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.*;
 
 /* Things that might be good to add!
-1. add and subtract vectors.
+1. Add and subtract vectors.
 2. Add a "progress bar" to show where we are in processing the file when searching it.
 3. To calibrate that progress bar, scroll through the whole file and print every 5,000th word. Print time as well. Post results to groupchat.
 4. Find some way to consolidate all the buffered input lines
-5. Rename all the cosine distance names to cosine similarity
 6. Condense all the damned IOExceptions by actually using try-catch
-7. Fix the terrible array update methods in the wordsToCloseTo
+7. Why does getWord sometimes take so long? Searching for McCain, say. (Maybe because continuously opening new
+buffered reader?)
  */
 
-public class ParsingWord2Vec {
+public class Word2VecUtility {
 	
 	public static void main(String[] args) throws IOException {
-		//printCosineSimilarity("Obama", "banana"); 
-		
-		String query = "dream";
-		ArrayList<WordDistance> nearQuery = wordsCloseTo(query, 10, 5000);
+		//Test queries to play around with!
+		//printCosineSimilarity("Obama", "McCain"); 
+		String query = "rich";
+		ArrayList<WordScore> nearQuery = wordsCloseTo(query, 10, 5000);
 		System.out.println(nearQuery.toString());
 	}
 	
@@ -36,49 +39,50 @@ public class ParsingWord2Vec {
 			nextWord = readWord(bufferedInput);
 		}
 		return readVector(bufferedInput);
+
 	}
 	
-	public static ArrayList<WordDistance> wordsCloseTo(String targetWord, int numResults, int numWordsToSearch) throws IOException {
-		//TODO: rename the helper class to similarity, not distance.
-		//TODO: Returns a list of word and similarity data, with closest ones at 0-index
+	public static ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults, int numWordsToSearch) throws IOException {
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
 		
-		ArrayList<WordDistance> results = new ArrayList<WordDistance>(numResults);
-		for(int i=0; i<numResults; i++) {
-			results.add(new WordDistance("", -1));
-		}
-		
+		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
+		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
+
 		BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
 		bufferedInput.skip(12);
 		for(int searchIndex = 0; searchIndex < numWordsToSearch; searchIndex++) {
 			String nextWord = readWord(bufferedInput);
 			float[] nextVec = readVector(bufferedInput);
-			float cosSimilarity = cosineDistance(nextVec, targetVec);
-			
-			//TODO: Fix this! This is the slowest possible way to update our array of 10! Just check against bottom element first, or use the fact that it's sorted.
-			for(int i=0; i<numResults; i++) {
-				if(cosSimilarity > results.get(i).distance) {
-					results.add(i, new WordDistance(nextWord, cosSimilarity));
-					results.remove(numResults);
-					i = numResults;
-				}
-			}
+
+			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
+
+			if(cosSimilarity<results.get(numResults-1).score) continue;
+
+			WordScore next = new WordScore(nextWord, cosSimilarity);
+			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
+				@Override
+				public int compare(WordScore o1, WordScore o2) {
+					return -Float.compare(o1.score, o2.score);}});
+
+			results.add(position < 0 ? -position - 1 : position, next);
+			results.remove(numResults);
+
 		}
 		return results;
 	}
-	
+
 	public static float printCosineSimilarity(String word1, String word2) throws IOException {
 		float[] firstVec = getVec(word1);
 		System.out.println("\"" + word1 + "\" vec is " + Arrays.toString(firstVec));
 		float[] secondVec = getVec(word2);
 		System.out.println("\"" + word2 + "\" vec is " + Arrays.toString(secondVec));
-		float cosSim = cosineDistance(firstVec, secondVec);
-		System.out.println("Cosine distance between " + word1 + " and " + word2 + ": " + cosSim);
+		float cosSim = cosineSimilarity(firstVec, secondVec);
+		System.out.println("Cosine similarity between " + word1 + " and " + word2 + ": " + cosSim);
 		return cosSim;
 	}
 	
-	public static float cosineDistance(float[] vec1, float[] vec2) {
+	public static float cosineSimilarity(float[] vec1, float[] vec2) {
 		//Cosine similarity is defined as (A . B) / (|A|*|B|), measures similarity between two vecs
 		//Could use map and reduce funcs to make this code more concise.
 		float dotProd = 0.0f;
@@ -120,15 +124,15 @@ public class ParsingWord2Vec {
 }
 
 
-class WordDistance { //Used to find nearby words in wordsCloseToString()
+class WordScore { 
+	//A helper class which stores a word and associated "score"
 	public String word;
-	public float distance;
-	public WordDistance(String word, float dist) {
+	public float score;
+	public WordScore(String word, float score) {
 		this.word = word;
-		distance = dist;
+		this.score = score;
 	}
-	
 	public String toString() {
-		return "\"" + word + "\":" + distance;
+		return "\"" + word + "\":" + score;
 	}
 }
