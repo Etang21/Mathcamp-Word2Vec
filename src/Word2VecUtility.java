@@ -13,7 +13,7 @@ import java.util.*;
 8. Why does getWord sometimes take so long? Searching for McCain, say. (Maybe because continuously opening new buffered reader?)
  */
 
-public class ParsingWord2Vec {
+public class Word2VecUtility {
 	
 	public static void main(String[] args) throws IOException {
 		//Test queries to play around with!
