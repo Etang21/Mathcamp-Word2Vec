@@ -17,18 +17,18 @@ Post results to groupchat.
  */
 
 public class Word2VecUtility {
-	
+
 	public static void main(String[] args) throws IOException {
 		//Test queries to play around with!
 		//printCosineSimilarity("Obama", "McCain");
-        getVectors(5000);
+		getVectors(5000);
 		String query = "rich";
 		ArrayList<WordScore> nearQuery = wordsCloseTo(query, 10);
 		System.out.println(nearQuery.toString());
 	}
 
 	public static HashMap<String, float[]> vectors = new HashMap<>();
-	
+
 	public static void getVectors(int numsearch) throws IOException {
 		//TODO: Record runtime and word position here. Have a "verbose" default variable.
 		//TODO: If we reach the end of a file without finding a word, return null?
@@ -37,47 +37,47 @@ public class Word2VecUtility {
 
 		int read=0;
 		while(bufferedInput.available()>0 && read<numsearch) {
-		    String word = readWord(bufferedInput);
-		    float[] vec = readVector(bufferedInput);
+			String word = readWord(bufferedInput);
+			float[] vec = readVector(bufferedInput);
 			vectors.put(word,vec);
 			read++;
 		}
 	}
 
 	public static float[] getVec(String word){return vectors.get(word);}
-	
+
 	public static ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws IOException {
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
-		
+
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
-        for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
+		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
 
-        Iterator it = vectors.entrySet().iterator();
+		Iterator it = vectors.entrySet().iterator();
 
-        while(it.hasNext()){
-            Map.Entry<String, float[]> pair = (Map.Entry)it.next();
+		while(it.hasNext()){
+			Map.Entry<String, float[]> pair = (Map.Entry)it.next();
 
-            String nextWord = pair.getKey();
-            float[] nextVec = pair.getValue();
+			String nextWord = pair.getKey();
+			float[] nextVec = pair.getValue();
 
-            float cosSimilarity = cosineSimilarity(nextVec, targetVec);
+			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
 
-            if(cosSimilarity<results.get(numResults-1).score){it.remove(); continue;}
+			if(cosSimilarity<results.get(numResults-1).score){it.remove(); continue;}
 
-            WordScore next = new WordScore(nextWord, cosSimilarity);
-            int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
-                @Override
-                public int compare(WordScore o1, WordScore o2) {
-                    return -Float.compare(o1.score, o2.score);}});
+			WordScore next = new WordScore(nextWord, cosSimilarity);
+			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
+				@Override
+				public int compare(WordScore o1, WordScore o2) {
+					return -Float.compare(o1.score, o2.score);}});
 
-            results.add(position < 0 ? -position - 1 : position, next);
-            results.remove(numResults);
+			results.add(position < 0 ? -position - 1 : position, next);
+			results.remove(numResults);
 
-            it.remove();
+			it.remove();
 
-        }
-        return results;
+		}
+		return results;
 	}
 
 	public static float printCosineSimilarity(String word1, String word2) throws IOException {
@@ -89,7 +89,7 @@ public class Word2VecUtility {
 		System.out.println("Cosine similarity between " + word1 + " and " + word2 + ": " + cosSim);
 		return cosSim;
 	}
-	
+
 	public static float cosineSimilarity(float[] vec1, float[] vec2) {
 		//Cosine similarity is defined as (A . B) / (|A|*|B|), measures similarity between two vecs
 		//Could use map and reduce funcs to make this code more concise.
@@ -105,7 +105,7 @@ public class Word2VecUtility {
 
 		return (float) (dotProd/(Math.sqrt(norm1)*Math.sqrt(norm2)));
 	}
-	
+
 	private static String readWord(BufferedInputStream bufferedInput) throws IOException {
 		//Could optimize this by checking if a byte is a space character directly, instead of casting?
 		//Could optimize this by reading individual bytes instead of arrays
@@ -119,11 +119,11 @@ public class Word2VecUtility {
 		}
 		return word;
 	}
-	
+
 	private static float[] readVector(BufferedInputStream bufferedInput) throws IOException {
 		byte[] vectorBytes = new byte[1200];
 		bufferedInput.read(vectorBytes);
-		
+
 		float[] vector = new float[300];
 		for(int i=0; i<1200; i+=4) {
 			byte[] fourBytes = {vectorBytes[i], vectorBytes[i+1], vectorBytes[i+2], vectorBytes[i+3]};
@@ -133,14 +133,14 @@ public class Word2VecUtility {
 	}
 
 	public float[] addVec(float[] a, float[] b, int add){
-	    float[] result = new float[300];
-	    for(int i=0; i<300; i++){result[i] = a[i]+add*b[i];}
-	    return result;
-    }
+		float[] result = new float[300];
+		for(int i=0; i<300; i++){result[i] = a[i]+add*b[i];}
+		return result;
+	}
 }
 
 
-class WordScore { 
+class WordScore {
 	//A helper class which stores a word and associated "score"
 	public String word;
 	public float score;
