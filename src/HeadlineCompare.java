@@ -37,6 +37,7 @@ public class HeadlineCompare {
 
             for(String word : words){
                 float[] curr = util.getVec(word);
+
                 if(curr!=null) {
                     for (int i = 0; i < 300; i++) {
                         average[i] += curr[i];
@@ -46,7 +47,7 @@ public class HeadlineCompare {
             }
 
             if(num_words>1) {
-                for (int i = 0; i < 300; i++) {average[i] *= (1 / num_words);}
+                for (int i = 0; i < 300; i++) {average[i]/=(float)num_words;}
                 headlines.put(line, average);
             }
         }
@@ -59,10 +60,7 @@ public class HeadlineCompare {
 
             String headline = in.nextLine();
 
-            System.out.println(headline);
             float[] target = headlines.get(headline);
-
-            System.out.println(target.length);
 
             System.out.println("finding matches... ");
 
@@ -79,8 +77,6 @@ public class HeadlineCompare {
                 if(sim <similarities.get(9)){it.remove(); continue;}
 
                 int position = Collections.binarySearch(similarities, sim, (o1, o2) -> -Float.compare(o1, o2));
-
-                System.out.println(position);
 
                 similarities.add(position < 0 ? -position - 1 : position, sim);
                 results.add(position < 0 ? -position - 1 : position, pair.getKey());

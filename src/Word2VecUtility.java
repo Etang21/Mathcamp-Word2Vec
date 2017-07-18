@@ -9,13 +9,11 @@ import java.util.Comparator;
 import java.util.*;
 
 /* Things that might be good to add!
-1. Add and subtract vectors.
-2. Add a "progress bar" to show where we are in processing the file when searching it.
-3. To calibrate that progress bar, scroll through the whole file and print every 5,000th word. Print time as well. Post results to groupchat.
-4. Find some way to consolidate all the buffered input lines
-6. Condense all the damned IOExceptions by actually using try-catch
-7. Why does getWord sometimes take so long? Searching for McCain, say. (Maybe because continuously opening new
-buffered reader?)
+1. Add a "progress bar" to show where we are in processing the file when searching it.
+2. To calibrate that progress bar, scroll through the whole file and print every 5,000th word. Print time as well.
+Post results to groupchat.
+3. Find some way to consolidate all the buffered input lines
+4. Condense all the damned IOExceptions by actually using try-catch
  */
 
 public class Word2VecUtility {
@@ -104,6 +102,7 @@ public class Word2VecUtility {
 			norm1 += Math.pow(vec1[i], 2);
 			norm2 += Math.pow(vec2[i], 2);
 		}
+
 		return (float) (dotProd/(Math.sqrt(norm1)*Math.sqrt(norm2)));
 	}
 	
