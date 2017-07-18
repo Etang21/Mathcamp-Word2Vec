@@ -22,54 +22,64 @@ public class Word2VecUtility {
 	
 	public static void main(String[] args) throws IOException {
 		//Test queries to play around with!
-		//printCosineSimilarity("Obama", "McCain"); 
+		//printCosineSimilarity("Obama", "McCain");
+        getVectors(5000);
 		String query = "rich";
-		ArrayList<WordScore> nearQuery = wordsCloseTo(query, 10, 5000);
+		ArrayList<WordScore> nearQuery = wordsCloseTo(query, 10);
 		System.out.println(nearQuery.toString());
 	}
+
+	public static HashMap<String, float[]> vectors = new HashMap<>();
 	
-	public static float[] getVec(String word) throws IOException {
+	public static void getVectors(int numsearch) throws IOException {
 		//TODO: Record runtime and word position here. Have a "verbose" default variable.
 		//TODO: If we reach the end of a file without finding a word, return null?
 		BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
 		bufferedInput.skip(12);
-		String nextWord = readWord(bufferedInput);
-		while(!nextWord.equals(word)) {
-			bufferedInput.skip(1200);
-			nextWord = readWord(bufferedInput);
-		}
-		return readVector(bufferedInput);
 
+		int read=0;
+		while(bufferedInput.available()>0 && read<numsearch) {
+		    String word = readWord(bufferedInput);
+		    float[] vec = readVector(bufferedInput);
+			vectors.put(word,vec);
+			read++;
+		}
 	}
+
+	public static float[] getVec(String word){return vectors.get(word);}
 	
-	public static ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults, int numWordsToSearch) throws IOException {
+	public static ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws IOException {
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
 		
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
-		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
+        for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
 
-		BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
-		bufferedInput.skip(12);
-		for(int searchIndex = 0; searchIndex < numWordsToSearch; searchIndex++) {
-			String nextWord = readWord(bufferedInput);
-			float[] nextVec = readVector(bufferedInput);
+        Iterator it = vectors.entrySet().iterator();
 
-			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
+        while(it.hasNext()){
+            Map.Entry<String, float[]> pair = (Map.Entry)it.next();
 
-			if(cosSimilarity<results.get(numResults-1).score) continue;
+            String nextWord = pair.getKey();
+            float[] nextVec = pair.getValue();
 
-			WordScore next = new WordScore(nextWord, cosSimilarity);
-			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
-				@Override
-				public int compare(WordScore o1, WordScore o2) {
-					return -Float.compare(o1.score, o2.score);}});
+            float cosSimilarity = cosineSimilarity(nextVec, targetVec);
 
-			results.add(position < 0 ? -position - 1 : position, next);
-			results.remove(numResults);
+            if(cosSimilarity<results.get(numResults-1).score){it.remove(); continue;}
 
-		}
-		return results;
+            WordScore next = new WordScore(nextWord, cosSimilarity);
+            int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
+                @Override
+                public int compare(WordScore o1, WordScore o2) {
+                    return -Float.compare(o1.score, o2.score);}});
+
+            results.add(position < 0 ? -position - 1 : position, next);
+            results.remove(numResults);
+
+            it.remove();
+
+        }
+        return results;
 	}
 
 	public static float printCosineSimilarity(String word1, String word2) throws IOException {
@@ -88,6 +98,7 @@ public class Word2VecUtility {
 		float dotProd = 0.0f;
 		float norm1 = 0.0f;
 		float norm2 = 0.0f;
+
 		for(int i=0; i<Math.min(vec1.length, vec2.length); i++) {
 			dotProd += vec1[i]*vec2[i];
 			norm1 += Math.pow(vec1[i], 2);
@@ -121,6 +132,12 @@ public class Word2VecUtility {
 		}
 		return vector;
 	}
+
+	public float[] addVec(float[] a, float[] b, int add){
+	    float[] result = new float[300];
+	    for(int i=0; i<300; i++){result[i] = a[i]+add*b[i];}
+	    return result;
+    }
 }
 
 
