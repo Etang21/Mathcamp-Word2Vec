@@ -7,6 +7,10 @@ import java.lang.*;
 
 /**
  * Created by dawsonbyrd on 7/16/17.
+ 
+ TODO: [1] make it so that input headline doesn't have to be from set in file
+       [2] have headlines automically come from RSS feeds of major news outlets instead of text file
+       [3] idk there is probably alot of other cool things to do
  */
 
 public class HeadlineCompare {
