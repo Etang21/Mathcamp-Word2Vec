@@ -23,6 +23,7 @@ public class Word2VecUtility {
 		//printCosineSimilarity("Obama", "McCain");
 		getVectors(5000);
 		String query = "rich";
+
 		ArrayList<WordScore> nearQuery = wordsCloseTo(query, 10);
 		System.out.println(nearQuery.toString());
 	}
@@ -63,7 +64,7 @@ public class Word2VecUtility {
 
 			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
 
-			if(cosSimilarity<results.get(numResults-1).score){it.remove(); continue;}
+			if(cosSimilarity<results.get(numResults-1).score){continue;}
 
 			WordScore next = new WordScore(nextWord, cosSimilarity);
 			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
@@ -74,11 +75,63 @@ public class Word2VecUtility {
 			results.add(position < 0 ? -position - 1 : position, next);
 			results.remove(numResults);
 
-			it.remove();
-
 		}
 		return results;
 	}
+
+	public static ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults) throws IOException {
+
+		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
+		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
+
+		Iterator it = vectors.entrySet().iterator();
+
+		while(it.hasNext()){
+			Map.Entry<String, float[]> pair = (Map.Entry)it.next();
+
+			String nextWord = pair.getKey();
+			float[] nextVec = pair.getValue();
+
+			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
+
+			if(cosSimilarity<results.get(numResults-1).score){continue;}
+
+			WordScore next = new WordScore(nextWord, cosSimilarity);
+			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
+				@Override
+				public int compare(WordScore o1, WordScore o2) {
+					return -Float.compare(o1.score, o2.score);}});
+
+			results.add(position < 0 ? -position - 1 : position, next);
+			results.remove(numResults);
+		}
+		return results;
+	}
+
+	public static ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults) throws IOException {
+
+		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
+		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
+
+		for(String s : set){
+			float[] nextVec = vectors.get(s);
+			if(nextVec==null) continue;
+			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
+
+			if(cosSimilarity<results.get(numResults-1).score){continue;}
+
+			WordScore next = new WordScore(s, cosSimilarity);
+			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
+				@Override
+				public int compare(WordScore o1, WordScore o2) {
+					return -Float.compare(o1.score, o2.score);}});
+
+			results.add(position < 0 ? -position - 1 : position, next);
+			results.remove(numResults);
+		}
+		return results;
+	}
+
 
 	public static float printCosineSimilarity(String word1, String word2) throws IOException {
 		float[] firstVec = getVec(word1);

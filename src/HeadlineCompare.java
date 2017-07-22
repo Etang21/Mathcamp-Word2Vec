@@ -22,6 +22,8 @@ public class HeadlineCompare {
         util.getVectors(100000);
         System.out.println("computing headline averages...");
 
+        System.out.println(Arrays.toString(util.getVec("word")));
+
         while(lines.hasNext()){
 
             String line = lines.nextLine();
@@ -61,6 +63,8 @@ public class HeadlineCompare {
             String headline = in.nextLine();
 
             float[] target = headlines.get(headline);
+
+            if(target==null){System.out.println("headline not found"); continue;}
 
             System.out.println("finding matches... ");
 
