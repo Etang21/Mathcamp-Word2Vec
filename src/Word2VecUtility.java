@@ -15,6 +15,7 @@ Post results to groupchat.
 3. Find some way to consolidate all the buffered input lines
 4. Condense all the damned IOExceptions by actually using try-catch
 5. Require users to populate vectors HashMap up front by making it part of the constructor
+6. Make methods more robust if they don't find a given word
  */
 
 public class Word2VecUtility {
@@ -36,12 +37,15 @@ public class Word2VecUtility {
 		}
 	}
 
-	public float[] getVec(String word){return vectors.get(word);}
+	public float[] getVec(String word){return vectors.get(word);} //Maybe do this ignoring case?
 
 	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws IOException {
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
-
+		return wordsCloseTo(targetVec, numResults);
+	}
+	
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults) throws IOException {
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
 		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
 
@@ -49,10 +53,10 @@ public class Word2VecUtility {
 
 		while(it.hasNext()){
 			Map.Entry<String, float[]> pair = (Map.Entry)it.next();
-
+			
 			String nextWord = pair.getKey();
 			float[] nextVec = pair.getValue();
-
+			
 			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
 
 			if(cosSimilarity<results.get(numResults-1).score){it.remove(); continue;}
@@ -124,9 +128,9 @@ public class Word2VecUtility {
 		return vector;
 	}
 
-	public float[] addVec(float[] a, float[] b, int add){
+	public float[] addVec(float[] a, float[] b, int scale){
 		float[] result = new float[300];
-		for(int i=0; i<300; i++){result[i] = a[i]+add*b[i];}
+		for(int i=0; i<300; i++){result[i] = a[i]+scale*b[i];}
 		return result;
 	}
 }
