@@ -66,40 +66,6 @@ public class Codenames {
         System.out.println("blue:"+words);
         System.out.println("red:"+opp);
 
-        double[][] array = new double[100000][300];
-        Iterator it = util.vectors.entrySet().iterator();
-
-        int m=0;
-        while (it.hasNext()) {
-            Map.Entry<String, float[]> pair = (Map.Entry)it.next();
-            for(int j=0; j<300; j++){
-                array[m][j] = (double) pair.getValue()[j];
-            }
-            m++;
-        }
-
-        /*Matrix sims = X.times(average);
-
-        double norm = 0; int V = sims.getRowDimension();
-        System.out.println(V);
-        for(int i=0; i<V; i++){norm += exp(sims.get(i,0));}
-
-        //normalizing cosine similarity vector using sotfmax
-        double[] softmax = new double[V];
-        for(int i=0; i<V; i++){softmax[i] = exp(sims.get(i,0))/norm;}
-
-        Integer[] indexes = new Integer[V];
-        for(int i=0; i<V; i++) indexes[i]=i;
-
-        Arrays.sort(indexes, new Comparator<Integer>(){
-            @Override
-            public int compare(Integer o1, Integer o2) {
-                return Double.compare(softmax[o1], softmax[o2]);}});
-
-        for(int i=1; i<6; i++){
-            System.out.println(util.vectors.keySet().toArray()[indexes[V-i]] +","+sims.get(indexes[V-i],0));
-        }*/
-
         for(int k=2; k<=8; k++){
             count=0;
             maximums.add(new Hint(0,"", new int[]{0}));
