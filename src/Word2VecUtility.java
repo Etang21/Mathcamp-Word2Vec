@@ -37,46 +37,13 @@ public class Word2VecUtility {
 		}
 	}
 
-<<<<<<< HEAD
 	public float[] getVec(String word){return vectors.get(word);} //Maybe do this ignoring case?
-=======
-	public float[] getVec(String word){return vectors.get(word);}
->>>>>>> codenames_dawson
 
 	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws IOException {
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
 		return wordsCloseTo(targetVec, numResults);
 	}
-	
-	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults) throws IOException {
-		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
-		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
-
-		Iterator it = vectors.entrySet().iterator();
-
-		while(it.hasNext()){
-			Map.Entry<String, float[]> pair = (Map.Entry)it.next();
-			
-			String nextWord = pair.getKey();
-			float[] nextVec = pair.getValue();
-			
-			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
-
-			if(cosSimilarity<results.get(numResults-1).score){continue;}
-
-			WordScore next = new WordScore(nextWord, cosSimilarity);
-			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
-				@Override
-				public int compare(WordScore o1, WordScore o2) {
-					return -Float.compare(o1.score, o2.score);}});
-
-			results.add(position < 0 ? -position - 1 : position, next);
-			results.remove(numResults);
-
-		}
-		return results;
-	}
 
 	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults) throws IOException {
 
@@ -107,8 +74,6 @@ public class Word2VecUtility {
 		return results;
 	}
 
-<<<<<<< HEAD
-=======
 	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults) throws IOException {
 
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
@@ -133,8 +98,6 @@ public class Word2VecUtility {
 		return results;
 	}
 
-
->>>>>>> codenames_dawson
 	public float printCosineSimilarity(String word1, String word2) throws IOException {
 		float[] firstVec = getVec(word1);
 		System.out.println("\"" + word1 + "\" vec is " + Arrays.toString(firstVec));
