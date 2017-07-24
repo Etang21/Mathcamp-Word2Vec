@@ -18,19 +18,9 @@ Post results to groupchat.
 
 public class Word2VecUtility {
 
-	public static void main(String[] args) throws IOException {
-		//Test queries to play around with!
-		//printCosineSimilarity("Obama", "McCain");
-		getVectors(5000);
-		String query = "rich";
+	public HashMap<String, float[]> vectors = new HashMap<>();
 
-		ArrayList<WordScore> nearQuery = wordsCloseTo(query, 10);
-		System.out.println(nearQuery.toString());
-	}
-
-	public static HashMap<String, float[]> vectors = new HashMap<>();
-
-	public static void getVectors(int numsearch) throws IOException {
+	public void getVectors(int numsearch) throws IOException {
 		//TODO: Record runtime and word position here. Have a "verbose" default variable.
 		//TODO: If we reach the end of a file without finding a word, return null?
 		BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
@@ -45,9 +35,9 @@ public class Word2VecUtility {
 		}
 	}
 
-	public static float[] getVec(String word){return vectors.get(word);}
+	public float[] getVec(String word){return vectors.get(word);}
 
-	public static ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws IOException {
+	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws IOException {
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
 
@@ -79,7 +69,7 @@ public class Word2VecUtility {
 		return results;
 	}
 
-	public static ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults) throws IOException {
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults) throws IOException {
 
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
 		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
@@ -108,7 +98,7 @@ public class Word2VecUtility {
 		return results;
 	}
 
-	public static ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults) throws IOException {
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults) throws IOException {
 
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
 		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
@@ -133,7 +123,7 @@ public class Word2VecUtility {
 	}
 
 
-	public static float printCosineSimilarity(String word1, String word2) throws IOException {
+	public float printCosineSimilarity(String word1, String word2) throws IOException {
 		float[] firstVec = getVec(word1);
 		System.out.println("\"" + word1 + "\" vec is " + Arrays.toString(firstVec));
 		float[] secondVec = getVec(word2);
@@ -143,7 +133,7 @@ public class Word2VecUtility {
 		return cosSim;
 	}
 
-	public static float cosineSimilarity(float[] vec1, float[] vec2) {
+	public float cosineSimilarity(float[] vec1, float[] vec2) {
 		//Cosine similarity is defined as (A . B) / (|A|*|B|), measures similarity between two vecs
 		//Could use map and reduce funcs to make this code more concise.
 		float dotProd = 0.0f;
@@ -159,7 +149,7 @@ public class Word2VecUtility {
 		return (float) (dotProd/(Math.sqrt(norm1)*Math.sqrt(norm2)));
 	}
 
-	private static String readWord(BufferedInputStream bufferedInput) throws IOException {
+	private String readWord(BufferedInputStream bufferedInput) throws IOException {
 		//Could optimize this by checking if a byte is a space character directly, instead of casting?
 		//Could optimize this by reading individual bytes instead of arrays
 		String word = "";
@@ -173,7 +163,7 @@ public class Word2VecUtility {
 		return word;
 	}
 
-	private static float[] readVector(BufferedInputStream bufferedInput) throws IOException {
+	private float[] readVector(BufferedInputStream bufferedInput) throws IOException {
 		byte[] vectorBytes = new byte[1200];
 		bufferedInput.read(vectorBytes);
 
