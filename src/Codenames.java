@@ -3,11 +3,7 @@ import java.net.URL;
 import java.util.*;
 
 import Jama.Matrix;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
-import javafx.util.Pair;
-
 import static java.lang.Math.exp;
-import static java.lang.Math.max;
 
 /**
  * Created by dawsonbyrd on 7/20/17.
