@@ -136,7 +136,7 @@ public class Word2VecUtility {
 }
 
 
-class WordScore {
+class WordScore implements Comparable<WordScore> {
 	//A helper class which stores a word and associated "score"
 	public String word;
 	public float score;
@@ -146,5 +146,9 @@ class WordScore {
 	}
 	public String toString() {
 		return "\"" + word + "\": " + score;
+	}
+	
+	public int compareTo(WordScore s) {
+		return (int) Math.signum(score - s.score);
 	}
 }
