@@ -154,7 +154,7 @@ public class Codenames {
                 for(int i=0; i<300; i++) curr[i][0]=(double)curr_f[i];
                 average.plusEquals(new Matrix(curr));
             }
-            average.timesEquals((double)1/4);
+            average.timesEquals((double)1/subsetSize);
 
             float[] average_vec = new float[300];
 
