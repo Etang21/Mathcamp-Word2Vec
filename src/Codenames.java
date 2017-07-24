@@ -1,5 +1,4 @@
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 
@@ -26,97 +25,118 @@ public class Codenames {
     public static Word2VecUtility util = new Word2VecUtility();
     static ArrayList<String> words = new ArrayList<>();
     static ArrayList<String> opp = new ArrayList<>();
-
     static ArrayList<Hint> maximums = new ArrayList<>();
 
-    static String[] data = new String[9914];
+    static String[] data = new String[404];
 
     public static void main(String[] args) throws IOException {
 
-        //found a source online that contains *common* enlgish words
-        URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/game-id-words.txt");
-        Scanner s = new Scanner(url.openStream());
+        FileWriter fw = new FileWriter("performance.txt", true);
+        BufferedWriter bw = new BufferedWriter(fw);
+        PrintWriter out = new PrintWriter(bw);
 
         System.out.print("\rretrieving word vectors...");
         util.getVectors(100000);
         Scanner input = new Scanner(System.in);
 
+        //found a source online that contains *common* enlgish words that appear in codenames
+
+        URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
+        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/game-id-words.txt");
+        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/words.txt");
+        Scanner s = new Scanner(url.openStream());
+
         System.out.print("\rdownloading word set...");
         int i=0;
-        while(s.hasNext()){data[i] = s.next(); i++;}
+        while(s.hasNext()){data[i] = s.next().toLowerCase(); i++;}
 
-        System.out.println("\rgenerating game board...");
+        Scanner in = new Scanner(System.in);
 
-        int n=0;
-        while(n<data.length){
-            if(opp.size()==8 && words.size()==8) break;
+        while(true) {
+            words.clear(); opp.clear(); maximums.clear();
 
-            double rand = Math.random();
-            if(rand<0.002){
-                if(util.getVec(data[n])==null)continue;
+            System.out.println("\rgenerating game board...");
 
-                if(rand<0.001){if(words.size()<8) words.add(data[n]);}
-                else if(opp.size()<8){opp.add(data[n]);}
+            int n = 0;
+            while (n < data.length) {
+                if (opp.size() == 8 && words.size() == 8) break;
+
+                double rand = Math.random();
+                if (rand < 0.05) {
+                    if (util.getVec(data[n]) == null) continue;
+                    if (data[n].length() < 3) continue;
+
+                    if (rand < 0.025) {
+                        if (words.size() < 8) words.add(data[n]);
+                    } else if (opp.size() < 8) {
+                        opp.add(data[n]);
+                    }
+                }
+
+                if (n == data.length - 1) {
+                    n = 0;
+                    opp.clear();
+                    words.clear();
+                } else n++;
             }
 
-            if(n==data.length-1)n=0;
-            else n++;
-        }
+            ArrayList<String> cards = new ArrayList<>();
+            cards.addAll(words);
+            cards.addAll(opp);
+            Collections.shuffle(cards);
 
-        System.out.println("blue:"+words);
-        System.out.println("red:"+opp);
+//        System.out.println("blue:"+words);
+//        System.out.println("red:"+opp);
 
-        double[][] array = new double[100000][300];
-        Iterator it = util.vectors.entrySet().iterator();
-
-        int m=0;
-        while (it.hasNext()) {
-            Map.Entry<String, float[]> pair = (Map.Entry)it.next();
-            for(int j=0; j<300; j++){
-                array[m][j] = (double) pair.getValue()[j];
+            for (int j = 0; j < 4; j++) {
+                for (int x = 0; x < 3; x++) {
+                    System.out.print(cards.get(4 * j + x) + " ");
+                }
+                System.out.println(cards.get(4 * j + 3));
             }
-            m++;
+
+            for (int k = 2; k <= 8; k++) {
+                count = 0;
+                maximums.add(new Hint(0, "", new int[]{0}));
+
+                int[] subset = new int[k];
+                checkSubsets(8, subset, 0, 0);
+
+                if (maximums.get(k - 2).prob < 0.4) break;
+            }
+
+            System.out.println();
+            //System.out.println(maximums);
+
+            int shift = (maximums.size() > 1) ? 2 : 1;
+            Hint final_hint = maximums.get(maximums.size() - shift);
+            System.out.println("hint: " + final_hint.word + "," + final_hint.s.length);
+
+            for (int j = 0; j < final_hint.s.length; j++) {
+                System.out.print("pick " + j + ":");
+                String pick = in.nextLine();
+                if (!words.contains(pick)) {
+                    System.out.println("\rincorrect!");
+                    out.print(0);break;
+                }
+                if (j == final_hint.s.length - 1){System.out.println("\rcorrect!"); out.print(1);}
+            }
+
+            String[] intendend = new String[final_hint.s.length];
+
+            for (int j = 0; j < intendend.length; j++) {
+                intendend[j] = words.get(final_hint.s[j]);
+            }
+
+            System.out.println("intended cards: " + Arrays.toString(intendend));
+
+            System.out.print("quit:"); String response = in.nextLine();
+            if(response.equals("y")) break;
+
+            System.out.println();
         }
 
-        /*Matrix sims = X.times(average);
-
-        double norm = 0; int V = sims.getRowDimension();
-        System.out.println(V);
-        for(int i=0; i<V; i++){norm += exp(sims.get(i,0));}
-
-        //normalizing cosine similarity vector using sotfmax
-        double[] softmax = new double[V];
-        for(int i=0; i<V; i++){softmax[i] = exp(sims.get(i,0))/norm;}
-
-        Integer[] indexes = new Integer[V];
-        for(int i=0; i<V; i++) indexes[i]=i;
-
-        Arrays.sort(indexes, new Comparator<Integer>(){
-            @Override
-            public int compare(Integer o1, Integer o2) {
-                return Double.compare(softmax[o1], softmax[o2]);}});
-
-        for(int i=1; i<6; i++){
-            System.out.println(util.vectors.keySet().toArray()[indexes[V-i]] +","+sims.get(indexes[V-i],0));
-        }*/
-
-        for(int k=2; k<=8; k++){
-            count=0;
-            maximums.add(new Hint(0,"", new int[]{0}));
-
-            int[] subset = new int[k];
-            checkSubsets(8, subset, 0,0);
-
-            if(maximums.get(k-2).prob < 0.4) break;
-        }
-
-        System.out.println();
-        System.out.println(maximums);
-
-        int shift = (maximums.size()>1) ? 2:1;
-
-        System.out.println("choice: " + maximums.get(maximums.size()-shift));
-
+        out.close();
     }
 
     public static float prob(float sim){
@@ -146,7 +166,7 @@ public class Codenames {
 
                 float prob = 1.0f;
                 float min_prob=1.0f;
-                String curr_word = canidates.get(subset.length+i).word;
+                String curr_word = canidates.get(subsetSize+i).word;
                 float[] hint =  util.vectors.get(curr_word);
 
                 for(int c: subset){
@@ -201,7 +221,6 @@ public class Codenames {
         public String toString() {
             return "\"" + word + "\":" + prob + ":" + Arrays.toString(s);
         }
-
     }
 }
 
