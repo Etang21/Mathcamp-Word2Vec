@@ -7,6 +7,10 @@ public class Word2VecDriver {
 	public static void main(String[] args) throws IOException {
 		Word2VecUtility util = new Word2VecUtility();
 		util.getVectors(100000);
+		String[] excluded = {"horse"};
+		System.out.println(util.wordsCloseTo("horse", 10, excluded));
+		
+		/*
 		//Test queries to play around with!
 		util.printCosineSimilarity("horse", "cow"); 
 		String query = "horse";
@@ -19,6 +23,8 @@ public class Word2VecDriver {
 		vec = util.addVec(vec, util.getVec("female"), 1);
 		ArrayList<WordScore> analogy = util.wordsCloseTo(vec, 10);
 		System.out.println(analogy.toString());
+		*/
+
 	}
 
 }

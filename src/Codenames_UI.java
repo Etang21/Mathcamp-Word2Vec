@@ -118,7 +118,11 @@ public class Codenames_UI {
 
             for(int i=0; i<300; i++){average_vec[i] = (float)average.get(i,0);}
 
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec,subset.length+5);
+            //Screening out all substrings/superstrings:
+            ArrayList<String> excluded = new ArrayList<String>(words);
+            excluded.addAll(opp);
+            String[] paramExcluded = new String[excluded.size()];
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec,subset.length+5, excluded.toArray(paramExcluded));
 
             for(int i=0; i<5; i++){
 

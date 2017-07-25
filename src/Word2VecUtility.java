@@ -4,8 +4,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.math.*;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.*;
 
 /* Things that might be good to add!
@@ -22,36 +20,51 @@ public class Word2VecUtility {
 
 	public HashMap<String, float[]> vectors = new HashMap<>();
 
-	public void getVectors(int numsearch) throws IOException {
+	public void getVectors(int numsearch) {
 		//TODO: Record runtime and word position here. Have a "verbose" default variable.
-		//TODO: If we reach the end of a file without finding a word, return null?
-		BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
-		bufferedInput.skip(12);
-
-		int read=0;
-		while(bufferedInput.available()>0 && read<numsearch) {
-			String word = readWord(bufferedInput);
-			float[] vec = readVector(bufferedInput);
-			vectors.put(word,vec);
-			read++;
+		try {
+			BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
+			bufferedInput.skip(12);
+			int read=0;
+			while(bufferedInput.available()>0 && read<numsearch) {
+				String word = readWord(bufferedInput);
+				float[] vec = readVector(bufferedInput);
+				vectors.put(word,vec);
+				read++;
+			}
+			bufferedInput.close();
+		} catch (IOException e) {
+			System.out.println("There was an error opening the bufered input stream to read vectors: " + e);
+			System.out.print("Anything else you try to do with Word2Vec will probably fail lmao!");
+			System.out.println(" So make sure the file referenced in the getVectors method of Word2VecUtility is correct. Bye!");
+			return;
 		}
 	}
 
 	public float[] getVec(String word){return vectors.get(word);} //Maybe do this ignoring case?
 
-	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws IOException {
+	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) {
+		return wordsCloseTo(targetWord, numResults, new String[0]);
+	}
+	
+	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults, String[] excluded) {
+		//Returns words close to target, but excludes any superstring or substring of that word.
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
-		return wordsCloseTo(targetVec, numResults);
+		return wordsCloseTo(targetVec, numResults, excluded);
 	}
 
-	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults) throws IOException {
-
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults)  {
+		return wordsCloseTo(targetVec, numResults, new String[0]);
+	}
+	
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults, String[] excluded) {
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
 		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
 
 		Iterator it = vectors.entrySet().iterator();
-
+		
+		outerLoop:
 		while(it.hasNext()){
 			Map.Entry<String, float[]> pair = (Map.Entry)it.next();
 
@@ -60,7 +73,10 @@ public class Word2VecUtility {
 
 			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
 
-			if(cosSimilarity<results.get(numResults-1).score){continue;}
+			if(cosSimilarity<results.get(numResults-1).score){continue outerLoop;}
+			for(String ex: excluded) { //Screen out excluded words
+				if(isSubstring(nextWord, ex)) { continue outerLoop; }
+			}
 
 			WordScore next = new WordScore(nextWord, cosSimilarity);
 			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
@@ -74,8 +90,14 @@ public class Word2VecUtility {
 		return results;
 	}
 
-	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults) throws IOException {
+	public static boolean isSubstring(String clue, String word) {
+        if (clue.toLowerCase().indexOf(word.toLowerCase()) != -1) return true;
+        if (word.toLowerCase().indexOf(clue.toLowerCase()) != -1) return true;
+        return false;
+    }
 
+	//Find closest word to targetVec which is in set
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults)  {
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
 		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
 
@@ -98,7 +120,7 @@ public class Word2VecUtility {
 		return results;
 	}
 
-	public float printCosineSimilarity(String word1, String word2) throws IOException {
+	public float printCosineSimilarity(String word1, String word2)  {
 		float[] firstVec = getVec(word1);
 		System.out.println("\"" + word1 + "\" vec is " + Arrays.toString(firstVec));
 		float[] secondVec = getVec(word2);

@@ -4,11 +4,7 @@ import java.net.URL;
 import java.util.*;
 
 import Jama.Matrix;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
-import javafx.util.Pair;
-
 import static java.lang.Math.exp;
-import static java.lang.Math.max;
 
 /**
  * Created by dawsonbyrd on 7/20/17.
@@ -148,7 +144,7 @@ public class Codenames {
         return 1.0f/(float)(1+exp(-arg));
     }
 
-    static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) throws IOException{
+    static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) {
         if (subsetSize == subset.length) {
 
             Matrix average = new Matrix(300,1);
@@ -164,10 +160,13 @@ public class Codenames {
 
             for(int i=0; i<300; i++){average_vec[i] = (float)average.get(i,0);}
 
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec,subset.length+5);
-
+            //Screening out all substrings/superstrings:
+            ArrayList<String> excluded = new ArrayList<String>(words);
+            excluded.addAll(opp);
+            String[] paramExcluded = new String[excluded.size()];
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec,subset.length+5, excluded.toArray(paramExcluded));
+            
             for(int i=0; i<5; i++){
-
                 float prob = 1.0f;
                 float min_prob=1.0f;
                 String curr_word = candidates.get(subsetSize+i).word;
