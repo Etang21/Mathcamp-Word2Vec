@@ -4,8 +4,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.math.*;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.*;
 
 /* Things that might be good to add!
@@ -46,18 +44,27 @@ public class Word2VecUtility {
 	public float[] getVec(String word){return vectors.get(word);} //Maybe do this ignoring case?
 
 	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) {
+		return wordsCloseTo(targetWord, numResults, new String[0]);
+	}
+	
+	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults, String[] excluded) {
+		//Returns words close to target, but excludes any superstring or substring of that word.
 		float[] targetVec = getVec(targetWord);
 		System.out.println("Found " + targetWord);
-		return wordsCloseTo(targetVec, numResults);
+		return wordsCloseTo(targetVec, numResults, excluded);
 	}
 
 	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults)  {
-
+		return wordsCloseTo(targetVec, numResults, new String[0]);
+	}
+	
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults, String[] excluded) {
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
 		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
 
 		Iterator it = vectors.entrySet().iterator();
-
+		
+		outerLoop:
 		while(it.hasNext()){
 			Map.Entry<String, float[]> pair = (Map.Entry)it.next();
 
@@ -66,7 +73,10 @@ public class Word2VecUtility {
 
 			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
 
-			if(cosSimilarity<results.get(numResults-1).score){continue;}
+			if(cosSimilarity<results.get(numResults-1).score){continue outerLoop;}
+			for(String ex: excluded) { //Screen out excluded words
+				if(isSubstring(nextWord, ex)) { continue outerLoop; }
+			}
 
 			WordScore next = new WordScore(nextWord, cosSimilarity);
 			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
@@ -80,8 +90,14 @@ public class Word2VecUtility {
 		return results;
 	}
 
-	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults)  {
+	public static boolean isSubstring(String clue, String word) {
+        if (clue.toLowerCase().indexOf(word.toLowerCase()) != -1) return true;
+        if (word.toLowerCase().indexOf(clue.toLowerCase()) != -1) return true;
+        return false;
+    }
 
+	//Find closest word to targetVec which is in set
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults)  {
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
 		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
 

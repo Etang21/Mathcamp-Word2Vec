@@ -140,21 +140,6 @@ public class Codenames {
         return 1.0f/(float)(1+exp(-arg));
     }
 
-    public static boolean checkSubstring(String clue) {
-        for (int i = 0; i < words.size(); i++) {
-            if (checkSubstring(clue, words.get(i))) return true;
-        }
-        for (int i = 0; i < opp.size(); i++) {
-            if (checkSubstring(clue, opp.get(i))) return true;
-        }
-    }
-
-    public static boolean checkSubstring(String clue, String word) {
-        if (clue.toLowerCase().indexOf(word.toLowerCase()) != -1) return false;
-        if (word.toLowerCase().indexOf(clue.toLowerCase()) != -1) return false;
-        return true;
-    }
-
     static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) {
         if (subsetSize == subset.length) {
 
@@ -171,13 +156,16 @@ public class Codenames {
 
             for(int i=0; i<300; i++){average_vec[i] = (float)average.get(i,0);}
 
-            ArrayList<WordScore> canidates = util.wordsCloseTo(average_vec,subset.length+5);
-
+            //Screening out all substrings/superstrings:
+            ArrayList<String> excluded = new ArrayList<String>(words);
+            excluded.addAll(opp);
+            String[] paramExcluded = new String[excluded.size()];
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec,subset.length+5, excluded.toArray(paramExcluded));
+            
             for(int i=0; i<5; i++){
-
                 float prob = 1.0f;
                 float min_prob=1.0f;
-                String curr_word = canidates.get(subsetSize+i).word;
+                String curr_word = candidates.get(subsetSize+i).word;
                 float[] hint =  util.vectors.get(curr_word);
 
                 for(int c: subset){
