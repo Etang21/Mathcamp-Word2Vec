@@ -140,6 +140,21 @@ public class Codenames {
         return 1.0f/(float)(1+exp(-arg));
     }
 
+    public static boolean checkSubstring(String clue) {
+        for (int i = 0; i < words.size(); i++) {
+            if (checkSubstring(clue, words.get(i))) return true;
+        }
+        for (int i = 0; i < opp.size(); i++) {
+            if (checkSubstring(clue, opp.get(i))) return true;
+        }
+    }
+
+    public static boolean checkSubstring(String clue, String word) {
+        if (clue.toLowerCase().indexOf(word.toLowerCase()) != -1) return false;
+        if (word.toLowerCase().indexOf(clue.toLowerCase()) != -1) return false;
+        return true;
+    }
+
     static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) {
         if (subsetSize == subset.length) {
 
