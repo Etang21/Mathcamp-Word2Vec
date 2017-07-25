@@ -140,7 +140,7 @@ public class Codenames {
         return 1.0f/(float)(1+exp(-arg));
     }
 
-    static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) throws IOException{
+    static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) {
         if (subsetSize == subset.length) {
 
             Matrix average = new Matrix(300,1);
