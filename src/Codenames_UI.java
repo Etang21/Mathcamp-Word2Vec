@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Scanner;
 
 import static java.lang.Math.exp;
@@ -35,53 +36,25 @@ public class Codenames_UI {
 
     public static void main(String[] args) throws IOException {
 
-        System.out.println("\rretrieving word vectors...");
+        System.out.println("\rRetrieving word vectors...");
         util.getVectors(100000);
-        Scanner input = new Scanner(System.in);
 
-        //found a source online that contains *common* enlgish words that appear in codenames
+        System.out.println("Loading board...");
+        loadBoardFromFile("board.txt");
+        
+        //Online functionality is currently broken, so commented out:
+        //if(GameSettings.PLAY_BOARD_FROM_FILE) {loadBoardFromFile("board.txt"); }
+        //else { loadBoardFromOnline(); }
 
-        URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
-        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/game-id-words.txt");
-        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/words.txt");
-        Scanner s = new Scanner(url.openStream());
-
-        System.out.println("\rdownloading word set...");
-        int i=0;
-
-        while(s.hasNext()){data[i] = s.next().toLowerCase(); i++;}
-
-        File file = new File("board.txt");
-        Scanner in = new Scanner(file);
-
-        System.out.println("loading board...");
-        words.clear(); opp.clear(); maximums.clear();
-
-        int num_words = Integer.parseInt(in.nextLine());
-        for(int k=0; k<num_words; k++){
-            String curr = in.next();
-            words.add(curr);}
-
-        int num_opp = Integer.parseInt(in.next());
-        for(int k=0; k<num_opp; k++){
-            String curr = in.next();
-            opp.add(curr);}
-
-        int num_by = Integer.parseInt(in.next());
-        for(int k=0; k<num_by; k++){bystanders.add(in.next());}
-
-        assassin = in.next();
-
-        System.out.println("getting hint...");
-
-        for (int k = 1; k<=num_words; k++) {
+        System.out.println("Getting hint...");
+        for (int k=1; k<=words.size(); k++) { //Loops through all subsets
             count = 0;
             maximums.add(new Hint(0, "", new int[]{0}));
 
             int[] subset = new int[k];
-            checkSubsets(num_words, subset, 0, 0);
+            checkSubsets(words.size(), subset, 0, 0);
 
-            if (maximums.get(k - 1).prob < 0.4) break;
+            if (maximums.get(k - 1).prob < GameSettings.SEARCH_CUTOFF) break;
         }
 
         System.out.println();
@@ -93,8 +66,92 @@ public class Codenames_UI {
 
         String[] intendend = new String[final_hint.s.length];
         for (int j = 0; j < intendend.length; j++) {intendend[j] = words.get(final_hint.s[j]);}
-
         System.out.println("intended cards: " + Arrays.toString(intendend));
+    }
+    
+    //MARK: Input board methods
+    
+    //Scans board from fileName, populates our ArrayLists:
+    private static void loadBoardFromFile(String fileName) {
+    	try {
+	    	File file = new File(fileName);
+	        Scanner boardInput = new Scanner(file);
+
+	        words.clear(); opp.clear(); maximums.clear();
+	
+	        int num_words = Integer.parseInt(boardInput.nextLine());
+	        for(int k=0; k<num_words; k++){
+	            String curr = boardInput.next();
+	            words.add(curr);}
+	
+	        int num_opp = Integer.parseInt(boardInput.next());
+	        for(int k=0; k<num_opp; k++){
+	            String curr = boardInput.next();
+	            opp.add(curr);}
+	
+	        int num_by = Integer.parseInt(boardInput.next());
+	        for(int k=0; k<num_by; k++){bystanders.add(boardInput.next());}
+	
+	        assassin = boardInput.next();
+	        boardInput.close();
+    	} catch(FileNotFoundException e) {
+    		System.out.println("Could not find file " + fileName);
+    		System.out.println("Error report: " + e);
+    		System.out.println("Did you misspell fileName? Try again.");
+    	}
+    }
+    
+    //FIXME: Fix this following function. Not hugely important, though.
+    //Scans board from online, then prints to console
+    private static void loadBoardFromOnline() throws IOException {
+    	URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
+        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/game-id-words.txt");
+        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/words.txt");
+        Scanner s = new Scanner(url.openStream());
+
+        System.out.print("\rdownloading word set...");
+        int i = 0;
+        while(s.hasNext()){data[i] = s.next().toLowerCase(); i++;}
+
+
+        words.clear(); opp.clear(); maximums.clear();
+        System.out.println("\rgenerating game board...");
+
+        int n = 0;
+        while (n < data.length) {
+            if (opp.size() == 8 && words.size() == 8) break;
+
+            double rand = Math.random();
+            if (rand < 0.05) {
+                if (util.getVec(data[n]) == null) continue;
+                if (data[n].length() < 3) continue;
+
+                if (rand < 0.025) {
+                    if (words.size() < 8) words.add(data[n]);
+                } else if (opp.size() < 8) {
+                    opp.add(data[n]);
+                }
+            }
+
+            if (n == data.length - 1) {
+                n = 0;
+                opp.clear();
+                words.clear();
+            } else n++;
+        }
+
+        ArrayList<String> cards = new ArrayList<>();
+        cards.addAll(words);
+        cards.addAll(opp);
+        Collections.shuffle(cards);
+
+        for (int j = 0; j < 4; j++) {
+            for (int x = 0; x < 3; x++) {
+                System.out.print(cards.get(4 * j + x) + " ");
+            }
+            System.out.println(cards.get(4 * j + 3));
+        }
+        s.close();
     }
 
     public static float prob(float sim){
@@ -150,7 +207,7 @@ public class Codenames_UI {
 
                 float ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));
 
-                if(ass_prob<0.1 && max_prob_opp<0.2 && max_prob_by<0.3 && prob > maximums.get(subsetSize-1).prob){
+                if(ass_prob < GameSettings.ASSASSIN_THRESHOLD && max_prob_opp < GameSettings.OPPONENT_THRESHOLD && max_prob_by < GameSettings.BYSTANDER_THRESHOLD && prob > maximums.get(subsetSize-1).prob){
                     int[] k = new int[subsetSize];
                     for(int m=0; m<subsetSize; m++){k[m]=subset[m];}
                     maximums.set(subsetSize-1, new Hint(prob, curr_word, k));
@@ -189,6 +246,24 @@ public class Codenames_UI {
         public String toString() {
             return "\"" + word + "\":" + prob + ":" + Arrays.toString(s);
         }
+    }
+    
+    static class GameSettings {
+    	//Probability below which you stop searching for clues:
+    	static float SEARCH_CUTOFF = 0.125f;
+    	
+    	//Probabilities above which you avoid clues:
+    	static float ASSASSIN_THRESHOLD = 0.3f;
+    	static float OPPONENT_THRESHOLD = 0.35f;
+    	static float BYSTANDER_THRESHOLD = 0.4f;
+    	
+    	//Play a board from board.txt (true), or play a random online board (false):
+    	//TODO: Fix this functionality
+    	//static boolean PLAY_BOARD_FROM_FILE = false; //THIS FUNCTIONALITY IS CURRENTLY BROKEN.
+    	
+    	//If you want the board to print intended cards before or after you guess, or never:
+    	
+    	//If you want to play the computer and have it update itself:
     }
 }
 
