@@ -1,5 +1,4 @@
 9
-<<<<<<< HEAD
 night
 charge
 sink
@@ -9,17 +8,6 @@ needle
 bug
 Europe
 Egypt
-=======
-fire
-reach
-belt
-model
-baker
-engine
-park
-cap
-America
->>>>>>> origin/master
 8
 carrot
 berry
