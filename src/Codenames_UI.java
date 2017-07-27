@@ -22,7 +22,7 @@ public class Codenames_UI {
 
     final static int[] num_subsets = new int[]{1,8,28,56,70,56,28,8,1};
 
-    static float count=0;
+    static float count=0; //A progress bar? I think? -Eric
 
     public static Word2VecUtility util = new Word2VecUtility();
     static ArrayList<String> words = new ArrayList<>();
@@ -47,11 +47,11 @@ public class Codenames_UI {
         //else { loadBoardFromOnline(); }
 
         System.out.println("Getting hint...");
-        for (int k=1; k<=words.size(); k++) { //Loops through all subsets
+        for (int k=1; k<=words.size(); k++) { //Loops through all sizes of subsets?
             count = 0;
             maximums.add(new Hint(0, "", new int[]{0}));
-
-            int[] subset = new int[k];
+            
+            int[] subset = new int[k]; //The chosen words of a subset?
             checkSubsets(words.size(), subset, 0, 0);
 
             if (maximums.get(k - 1).prob < GameSettings.SEARCH_CUTOFF) break;
@@ -162,6 +162,7 @@ public class Codenames_UI {
     static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) throws IOException{
         if (subsetSize == subset.length) {
 
+        	//Averages the words from each index of our subset:
             Matrix average = new Matrix(300,1);
             for(int index : subset){
                 double[][] curr = new double[300][1];
@@ -170,24 +171,28 @@ public class Codenames_UI {
                 average.plusEquals(new Matrix(curr));
             }
             average.timesEquals((double)1/subsetSize);
-
             float[] average_vec = new float[300];
-
             for(int i=0; i<300; i++){average_vec[i] = (float)average.get(i,0);}
 
-            //Screening out all substrings/superstrings:
+            //Creates an array of the words which we must exclude from our search for hints
             ArrayList<String> excluded = new ArrayList<String>(words);
             excluded.addAll(opp);
             String[] paramExcluded = new String[excluded.size()];
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec,subset.length+5, excluded.toArray(paramExcluded));
+            
+            //Finds our candidate hints: the 5 words closest to the average of our subset
+            //These five words exclude substrings and superstrings of words on the board.
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, 5, excluded.toArray(paramExcluded));
 
+            //For each of our 5 candidate words, evaluate the probability that we 
             for(int i=0; i<5; i++){
-
                 float prob = 1.0f;
-                float min_prob=1.0f;
-                String curr_word = candidates.get(subsetSize+i).word;
+                float min_prob = 1.0f;
+                
+                //Obtain a candidate hint word, with String curr_word and vec hint.
+                String curr_word = candidates.get(i).word;
                 float[] hint =  util.vectors.get(curr_word);
-
+                
+                //For each word in our subset, we check how our candidate is to that word.
                 for(int c: subset){
                     float[] card = util.getVec(words.get(c));
                     float curr_prob = prob(util.cosineSimilarity(hint,card));
@@ -248,6 +253,7 @@ public class Codenames_UI {
         }
     }
     
+    //Constants you can use to adjust game settings:
     static class GameSettings {
     	//Probability below which you stop searching for clues:
     	static float SEARCH_CUTOFF = 0.125f;
