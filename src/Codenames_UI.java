@@ -181,7 +181,7 @@ public class Codenames_UI {
             
             //Finds our candidate hints: the 5 words closest to the average of our subset
             //These five words exclude substrings and superstrings of words on the board.
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, 5, excluded.toArray(paramExcluded));
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, subset.length+5, excluded.toArray(paramExcluded));
 
             //For each of our 5 candidate words, evaluate the probability that we 
             for(int i=0; i<5; i++){
@@ -189,7 +189,7 @@ public class Codenames_UI {
                 float min_prob = 1.0f;
                 
                 //Obtain a candidate hint word, with String curr_word and vec hint.
-                String curr_word = candidates.get(i).word;
+                String curr_word = candidates.get(subsetSize + i).word;
                 float[] hint =  util.vectors.get(curr_word);
                 
                 //For each word in our subset, we check how our candidate is to that word.
