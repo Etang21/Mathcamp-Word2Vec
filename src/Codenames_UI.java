@@ -43,8 +43,8 @@ public class Codenames_UI {
         loadBoardFromFile("board.txt");
         
         //Online functionality is currently broken, so commented out:
-        //if(GameSettings.PLAY_BOARD_FROM_FILE) {loadBoardFromFile("board.txt"); }
-        //else { loadBoardFromOnline(); }
+        if (GameSettings.PLAY_BOARD_FROM_FILE) { loadBoardFromFile("board.txt"); }
+        else { loadBoardFromOnline(); }
 
         System.out.println("Getting hint...");
         for (int k=1; k<=words.size(); k++) { //Loops through all sizes of subsets?
@@ -70,7 +70,6 @@ public class Codenames_UI {
     }
     
     //MARK: Input board methods
-    
     //Scans board from fileName, populates our ArrayLists:
     private static void loadBoardFromFile(String fileName) {
     	try {
@@ -101,7 +100,6 @@ public class Codenames_UI {
     	}
     }
     
-    //FIXME: Fix this following function. Not hugely important, though.
     //Scans board from online, then prints to console
     private static void loadBoardFromOnline() throws IOException {
     	URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
@@ -188,7 +186,7 @@ public class Codenames_UI {
                 float prob = 1.0f;
                 float min_prob = 1.0f;
                 
-                //Obtain a candidate hint word, with String curr_word and vec hint.
+                //Obtain a candidate hint word, with String curr_word and vec hint. //Why do we skip over some words?
                 String curr_word = candidates.get(subsetSize + i).word;
                 float[] hint =  util.vectors.get(curr_word);
                 
@@ -264,8 +262,7 @@ public class Codenames_UI {
     	static float BYSTANDER_THRESHOLD = 0.4f;
     	
     	//Play a board from board.txt (true), or play a random online board (false):
-    	//TODO: Fix this functionality
-    	//static boolean PLAY_BOARD_FROM_FILE = false; //THIS FUNCTIONALITY IS CURRENTLY BROKEN.
+    	static boolean PLAY_BOARD_FROM_FILE = false;
     	
     	//If you want the board to print intended cards before or after you guess, or never:
     	
