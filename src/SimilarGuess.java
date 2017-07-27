@@ -10,17 +10,22 @@ public class SimilarGuess {
 
     public static Word2VecUtility util = new Word2VecUtility();
 
+    static Object[] keys;
+    static Random generator = new Random();
+
     public static void main(String[] args) throws IOException{
 
         System.out.println("retrieving word vectors...");
         util.getVectors(100000);
 
-        FileWriter fw = new FileWriter("logistic_data.txt", true);
+        FileWriter fw = new FileWriter("logistic.txt", true);
         BufferedWriter bw = new BufferedWriter(fw);
         PrintWriter data = new PrintWriter(bw);
         Scanner in = new Scanner(System.in);
 
         boolean run=true;
+        keys = util.vectors.keySet().toArray();
+
 
         while(run){
             Random generator = new Random();
@@ -34,22 +39,17 @@ public class SimilarGuess {
             if(pass.equals("p"))continue; if(pass.equals("s"))break;
 
             int i=0;
-            int j=0;
-            while(i<12){
-                String curr = (String) keys[generator.nextInt(keys.length)];
-                float[] curr_vec = util.vectors.get(curr);
-                float sim = util.cosineSimilarity(vec, curr_vec);
 
-                if(sim==1.0f) continue;
+            while (i<5) {
+                float minsim = 0.4f*generator.nextFloat();
+                String curr = within(vec, minsim);
+                if(curr==null) continue;
+                if(curr.equals(word)) continue;
 
-                if(j==99000) i=12;
+                float[] curr_vec = util.getVec(curr);
+                float sim = util.l2norm(curr_vec, vec);
 
-                if(i<3){if(sim>0.25)continue;}
-                if(i>=3 && i<8){if(sim>0.5)continue; if(sim<0.25) continue;}
-                if(i>=8 && i<10) {if(sim>0.5)continue; if(sim<0.4){j++; continue;} j=0;}
-                if(i>=10){i=12; if(sim<0.5){j++; continue;} j=0;}
-
-                System.out.print(curr+","+sim+":");
+                System.out.print(curr+":");
                 String result = in.next();
 
                 if(result.equals("y")){data.println(sim+",1.0");}
@@ -57,10 +57,23 @@ public class SimilarGuess {
 
                 i++;
             }
+
             in.nextLine();
         }
 
         data.close();
+    }
+
+    static String within(float[] target, float sim){
+        int j=0;
+        while(j<100000){
+            String word = (String) keys[generator.nextInt(keys.length)];
+            float[] vec = util.vectors.get(word);
+
+            if(util.cosineSimilarity(target,vec)>=sim) return word;
+        }
+
+        return null;
     }
 
 }

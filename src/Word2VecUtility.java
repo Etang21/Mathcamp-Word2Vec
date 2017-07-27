@@ -177,6 +177,13 @@ public class Word2VecUtility {
 		for(int i=0; i<300; i++){result[i] = a[i]+scale*b[i];}
 		return result;
 	}
+
+	public float l2norm(float[] a, float[] b){
+		double sum=0;
+		if(a.length!=b.length) throw new IllegalArgumentException("vectors must be of the same length");
+		for(int i=0; i<a.length; i++){sum+=(a[i]-b[i])*(a[i]-b[i]);}
+		return (float)Math.sqrt(sum);
+	}
 }
 
 
