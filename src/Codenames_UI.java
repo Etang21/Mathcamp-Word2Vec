@@ -20,7 +20,7 @@ public class Codenames_UI {
     final static float[] B = new float[]{-3.55106049399243f, 11.8332877194120f};
     final static float t = 0.75f;
 
-    final static int[] num_subsets = new int[]{1,8,28,56,70,56,28,8,1};
+    static int[] num_subsets;
 
     static float count=0; //A progress bar? I think? -Eric
 
@@ -36,37 +36,75 @@ public class Codenames_UI {
 
     public static void main(String[] args) throws IOException {
 
-        System.out.println("\rRetrieving word vectors...");
-        util.getVectors(100000);
+        while(true) {
+            FileWriter fw = new FileWriter("threshold_data.txt", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            PrintWriter out = new PrintWriter(bw);
 
-        System.out.println("Loading board...");
-        loadBoardFromFile("board.txt");
-        
-        //Online functionality is currently broken, so commented out:
-        //if(GameSettings.PLAY_BOARD_FROM_FILE) {loadBoardFromFile("board.txt"); }
-        //else { loadBoardFromOnline(); }
+            words.clear(); opp.clear(); bystanders.clear(); assassin=""; maximums.clear();
+            util.getVectors(100000);
 
-        System.out.println("Getting hint...");
-        for (int k=1; k<=words.size(); k++) { //Loops through all sizes of subsets?
-            count = 0;
-            maximums.add(new Hint(0, "", new int[]{0}));
-            
-            int[] subset = new int[k]; //The chosen words of a subset?
-            checkSubsets(words.size(), subset, 0, 0);
+            //Online functionality is currently broken, so commented out:
+            if (GameSettings.PLAY_BOARD_FROM_FILE) {
+                loadBoardFromFile("board.txt");
+            } else {loadBoardFromOnline();}
 
-            if (maximums.get(k - 1).prob < GameSettings.SEARCH_CUTOFF) break;
+            num_subsets = new int[words.size() + 1];
+
+            for (int k = 0; k < num_subsets.length; k++) {
+                int result = 1;
+                for (int i = 0; i < k; i++) {
+                    result *= (words.size() - i);
+                }
+                for (int i = 1; i <= k; i++) {
+                    result /= i;
+                }
+                num_subsets[k] = result;
+            }
+
+            System.out.print("\rgetting hint...");
+            for (int k = 1; k <= words.size(); k++) { //Loops through all sizes of subsets?
+                count = 0;
+                maximums.add(new Hint(0, "", new int[]{0}));
+
+                int[] subset = new int[k]; //The chosen words of a subset?
+                checkSubsets(words.size(), subset, 0, 0);
+
+                if (maximums.get(k - 1).prob < 0.125) break;
+            }
+
+            System.out.println();
+            //System.out.println(maximums);
+
+            Scanner in = new Scanner(System.in);
+            int shift = (maximums.size() > 1) ? 2 : 1;
+            Hint final_hint = maximums.get(maximums.size() - shift);
+            System.out.println("hint: " + final_hint.word + "," + final_hint.s.length);
+
+            for (int j = 0; j < final_hint.s.length; j++) {
+                System.out.print("pick " + j + ":");
+                String pick = in.nextLine();
+                if (!words.contains(pick)) {
+                    System.out.println("\rincorrect!");
+                    out.print((j+1)+""+0+",");
+                    break;
+                }
+                if (j == final_hint.s.length - 1) {
+                    System.out.println("\rcorrect!");
+                    out.print(final_hint.s.length+""+1+",");
+                }
+            }
+
+            String[] intended = new String[final_hint.s.length];
+            for (int j = 0; j < intended.length; j++) {intended[j] = words.get(final_hint.s[j]);}
+            System.out.println("intended cards: " + Arrays.toString(intended));
+
+            System.out.print("quit? "); if(!in.nextLine().equals("")) break;
+            System.out.println();
+
+            out.close();
+
         }
-
-        System.out.println();
-        //System.out.println(maximums);
-
-        int shift = (maximums.size() > 1) ? 2 : 1;
-        Hint final_hint = maximums.get(maximums.size() - shift);
-        System.out.println("hint: " + final_hint.word + "," + final_hint.s.length);
-
-        String[] intendend = new String[final_hint.s.length];
-        for (int j = 0; j < intendend.length; j++) {intendend[j] = words.get(final_hint.s[j]);}
-        System.out.println("intended cards: " + Arrays.toString(intendend));
     }
     
     //MARK: Input board methods
@@ -100,7 +138,7 @@ public class Codenames_UI {
     		System.out.println("Did you misspell fileName? Try again.");
     	}
     }
-    
+
     //FIXME: Fix this following function. Not hugely important, though.
     //Scans board from online, then prints to console
     private static void loadBoardFromOnline() throws IOException {
@@ -109,28 +147,31 @@ public class Codenames_UI {
         //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/words.txt");
         Scanner s = new Scanner(url.openStream());
 
-        System.out.print("\rdownloading word set...");
+        System.out.print("\rdownloading vocabulary...");
         int i = 0;
         while(s.hasNext()){data[i] = s.next().toLowerCase(); i++;}
 
+        int word_size=0;
+        if(Math.random()<0.5){word_size=8;}
+        else{word_size=9;}
 
-        words.clear(); opp.clear(); maximums.clear();
         System.out.println("\rgenerating game board...");
-
         int n = 0;
         while (n < data.length) {
-            if (opp.size() == 8 && words.size() == 8) break;
+            if (opp.size() == 17-word_size && words.size() == word_size && bystanders.size()==7 && !assassin.equals(""))
+                break;
 
             double rand = Math.random();
-            if (rand < 0.05) {
+            if (rand < 0.1) {
                 if (util.getVec(data[n]) == null) continue;
                 if (data[n].length() < 3) continue;
-
                 if (rand < 0.025) {
-                    if (words.size() < 8) words.add(data[n]);
-                } else if (opp.size() < 8) {
-                    opp.add(data[n]);
-                }
+                    if (words.size() < word_size) words.add(data[n]);
+                } else if (rand<0.05){
+                    if(opp.size() < 17-word_size) opp.add(data[n]);
+                } else if(rand<0.075) if(bystanders.size()<7) bystanders.add(data[n]);
+
+                else if(assassin.equals(""))assassin = data[n];
             }
 
             if (n == data.length - 1) {
@@ -143,13 +184,15 @@ public class Codenames_UI {
         ArrayList<String> cards = new ArrayList<>();
         cards.addAll(words);
         cards.addAll(opp);
+        cards.addAll(bystanders);
+        cards.add(assassin);
         Collections.shuffle(cards);
 
-        for (int j = 0; j < 4; j++) {
-            for (int x = 0; x < 3; x++) {
-                System.out.print(cards.get(4 * j + x) + " ");
+        for (int j = 0; j < 5; j++) {
+            for (int x = 0; x < 4; x++) {
+                System.out.print(cards.get(5 * j + x) + " ");
             }
-            System.out.println(cards.get(4 * j + 3));
+            System.out.println(cards.get(5 * j + 4));
         }
         s.close();
     }
@@ -181,15 +224,15 @@ public class Codenames_UI {
             
             //Finds our candidate hints: the 5 words closest to the average of our subset
             //These five words exclude substrings and superstrings of words on the board.
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, subset.length+5, excluded.toArray(paramExcluded));
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, 10, excluded.toArray(paramExcluded));
 
             //For each of our 5 candidate words, evaluate the probability that we 
-            for(int i=0; i<5; i++){
+            for(int i=0; i<10; i++){
                 float prob = 1.0f;
-                float min_prob = 1.0f;
+                float min_prob = 1.0f; //used to track card in subset with minimum similarity probability
                 
                 //Obtain a candidate hint word, with String curr_word and vec hint.
-                String curr_word = candidates.get(subsetSize + i).word;
+                String curr_word = candidates.get(i).word;
                 float[] hint =  util.vectors.get(curr_word);
                 
                 //For each word in our subset, we check how our candidate is to that word.
@@ -256,7 +299,7 @@ public class Codenames_UI {
     //Constants you can use to adjust game settings:
     static class GameSettings {
     	//Probability below which you stop searching for clues:
-    	static float SEARCH_CUTOFF = 0.125f;
+    	static float SEARCH_CUTOFF = 0.5f;
     	
     	//Probabilities above which you avoid clues:
     	static float ASSASSIN_THRESHOLD = 0.3f;
@@ -264,8 +307,8 @@ public class Codenames_UI {
     	static float BYSTANDER_THRESHOLD = 0.4f;
     	
     	//Play a board from board.txt (true), or play a random online board (false):
-    	//TODO: Fix this functionality
-    	//static boolean PLAY_BOARD_FROM_FILE = false; //THIS FUNCTIONALITY IS CURRENTLY BROKEN.
+
+    	static boolean PLAY_BOARD_FROM_FILE = false; //THIS FUNCTIONALITY IS CURRENTLY BROKEN.
     	
     	//If you want the board to print intended cards before or after you guess, or never:
     	
