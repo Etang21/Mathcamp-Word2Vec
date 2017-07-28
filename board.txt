@@ -1,6 +1,11 @@
-2
+7
 flannel
 apple
+Drake
+key
+jewel
+woolly
+fever
 8
 carrot
 berry

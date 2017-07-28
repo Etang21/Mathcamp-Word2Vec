@@ -329,7 +329,7 @@ public class Codenames_UI {
     	//Probabilities above which you avoid clues:
     	static float ASSASSIN_THRESHOLD = 0.3f;
     	static float OPPONENT_THRESHOLD = 0.35f;
-    	static float BYSTANDER_THRESHOLD = 0.4f;
+    	static float BYSTANDER_THRESHOLD = 0.5f;
     	
     	//Play a board from board.txt (true), or play a random online board (false):
     	static boolean PLAY_BOARD_FROM_FILE = true;
@@ -338,7 +338,7 @@ public class Codenames_UI {
     	static int DATABASE_SIZE = 100000;
     	
     	//Number of candidate hints to generate for each subset of words (then checks all these candidates), default 5:
-    	static int NUM_CANDIDATES = 10;
+    	static int NUM_CANDIDATES = 5;
 
     	//If you want the board to print intended cards before or after you guess, or never:
     	
