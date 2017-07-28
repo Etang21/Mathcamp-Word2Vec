@@ -35,7 +35,7 @@ public class Codenames_UI {
     public static void main(String[] args) throws IOException {
 
         System.out.println("\rRetrieving word vectors...");
-        util.getVectors(100000);
+        util.getVectors(GameSettings.DATABASE_SIZE);
 
         System.out.println("Loading board...");
         loadBoardFromFile("board.txt");
@@ -177,11 +177,11 @@ public class Codenames_UI {
             
             //Finds our candidate hints: the 5 words closest to the average of our subset
             //These five words exclude substrings and superstrings of words on the board.
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, 5, excluded.toArray(paramExcluded));
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, GameSettings.NUM_CANDIDATES, excluded.toArray(paramExcluded));
 
             //For each of our 5 candidate words, evaluate the probability that we 
             //TODO: Let us change how many candidate words we try to find
-            for(int i=0; i<5; i++){
+            for(int i=0; i<GameSettings.NUM_CANDIDATES; i++){
                 float prob = 1.0f;
                 float min_prob = 1.0f;
                 
@@ -267,6 +267,12 @@ public class Codenames_UI {
     	
     	//Play a board from board.txt (true), or play a random online board (false):
     	static boolean PLAY_BOARD_FROM_FILE = true;
+    	
+    	//Number of words to search from the Word2Vec database:
+    	static int DATABASE_SIZE = 100000;
+    	
+    	//Number of candidate hints to generate for each subset of words (then checks all these candidates), default 5:
+    	static int NUM_CANDIDATES = 5;
     	
     	//If you want the board to print intended cards before or after you guess, or never:
     	
