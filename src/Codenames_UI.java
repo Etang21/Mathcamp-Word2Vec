@@ -26,7 +26,6 @@ public class Codenames_UI {
     static ArrayList<String> bystanders = new ArrayList<>();
     static String assassin;
 
-    static ArrayList<Hint> maximums = new ArrayList<>(); //Stores the best hint for subset size i at index i.
     static float count=0; //A progress bar? I think? -Eric
     final static int[] num_subsets = new int[]{1,8,28,56,70,56,28,8,1}; //TODO: Change this hardcoding. Stores number of subsets of size i at index i.
 
@@ -44,16 +43,7 @@ public class Codenames_UI {
         else { loadBoardFromOnline(); }
 
         System.out.println("Getting hint...");
-        //Loops through all possible sizes (k) of subsets:
-        for (int k=1; k<=words.size(); k++) {
-            count = 0;
-            maximums.add(new Hint(0, "", new int[]{0}));
-            
-            int[] subset = new int[k]; //The chosen words of a subset?
-            checkSubsets(words.size(), subset, 0, 0);
-
-            if (maximums.get(k - 1).prob < GameSettings.SEARCH_CUTOFF) break;
-        }
+        ArrayList<Hint> maximums = findBestHints();
 
         System.out.println();
         //System.out.println(maximums);
@@ -67,14 +57,13 @@ public class Codenames_UI {
         System.out.println("intended cards: " + Arrays.toString(intendend));
     }
     
-    //MARK: Input board methods
     //Scans board from fileName, populates our ArrayLists:
     private static void loadBoardFromFile(String fileName) {
     	try {
 	    	File file = new File(fileName);
 	        Scanner boardInput = new Scanner(file);
 
-	        words.clear(); opp.clear(); maximums.clear();
+	        words.clear(); opp.clear();
 	
 	        int num_words = Integer.parseInt(boardInput.nextLine());
 	        for(int k=0; k<num_words; k++){
@@ -110,7 +99,7 @@ public class Codenames_UI {
         while(s.hasNext()){data[i] = s.next().toLowerCase(); i++;}
 
 
-        words.clear(); opp.clear(); maximums.clear();
+        words.clear(); opp.clear();
         System.out.println("\rgenerating game board...");
 
         int n = 0;
@@ -150,23 +139,41 @@ public class Codenames_UI {
         s.close();
     }
 
+    //Returns ArrayList of best hints, where position i stores the best hint for subsets of size i.
+    private static ArrayList<Hint> findBestHints() throws IOException {
+        ArrayList<Hint> bestHints = new ArrayList<>();
+    	//Loop through all possible sizes (k) of subsets:
+        for (int k=1; k<=words.size(); k++) {
+            count = 0;
+            bestHints.add(new Hint(0, "", new int[]{0}));
+            
+            int[] subset = new int[k];
+            checkSubsets(subset, 0, 0, bestHints); //Updates bestHints inside method.
+
+            if (bestHints.get(k - 1).prob < GameSettings.SEARCH_CUTOFF) 
+            	return bestHints;
+        }
+        return bestHints;
+    }
+    
+    
     public static float prob(float sim){
         float arg = B[0] + sim*B[1];
         return 1.0f/(float)(1+exp(-arg));
     }
 
-    static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) throws IOException{
-        if (subsetSize == subset.length) { //If our subset array contains subsetSize (target) # words
+    static void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums) throws IOException{
+        if (currSubsetSize == currIndicesSubset.length) { //If our subset array contains subsetSize (target) # words
 
         	//Averages the words from each index of our subset:
             Matrix average = new Matrix(300,1);
-            for(int index : subset){
+            for(int index : currIndicesSubset){
                 double[][] curr = new double[300][1];
                 float[] curr_f = util.vectors.get(words.get(index));
                 for(int i=0; i<300; i++) curr[i][0]=(double)curr_f[i];
                 average.plusEquals(new Matrix(curr));
             }
-            average.timesEquals((double)1/subsetSize);
+            average.timesEquals((double)1/currSubsetSize);
             float[] average_vec = new float[300];
             for(int i=0; i<300; i++){average_vec[i] = (float)average.get(i,0);}
 
@@ -175,8 +182,7 @@ public class Codenames_UI {
             excluded.addAll(opp);
             String[] paramExcluded = new String[excluded.size()];
             
-            //Finds our candidate hints: the 5 words closest to the average of our subset
-            //These five words exclude substrings and superstrings of words on the board.
+            //Finds our candidate hints: the words closest to the average of our subset, excluding substrings and superstrings of words on the board.
             ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, GameSettings.NUM_CANDIDATES, excluded.toArray(paramExcluded));
 
             //For each of our 5 candidate words, evaluate the probability that we 
@@ -190,7 +196,7 @@ public class Codenames_UI {
                 float[] hint =  util.vectors.get(curr_word);
                 
                 //For each word in our subset, we check how close our candidate is to that word.
-                for(int c: subset){
+                for(int c: currIndicesSubset){
                     float[] card = util.getVec(words.get(c));
                     float curr_prob = prob(util.cosineSimilarity(hint,card));
                     prob*=curr_prob;
@@ -210,30 +216,30 @@ public class Codenames_UI {
                 float ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));
 
                 //If this hint meets constraints and beats all probabilities so far for hints of its size (stored in maximums), add it to maximums.
-                if(ass_prob < GameSettings.ASSASSIN_THRESHOLD && max_prob_opp < GameSettings.OPPONENT_THRESHOLD && max_prob_by < GameSettings.BYSTANDER_THRESHOLD && prob > maximums.get(subsetSize-1).prob){
+                if(ass_prob < GameSettings.ASSASSIN_THRESHOLD && max_prob_opp < GameSettings.OPPONENT_THRESHOLD && max_prob_by < GameSettings.BYSTANDER_THRESHOLD && prob > maximums.get(currSubsetSize-1).prob){
                     //Make a duplicate copy of subset, called k, and add that to maximums.
-                	int[] k = new int[subsetSize];
-                    for(int m=0; m<subsetSize; m++){k[m]=subset[m];}
-                    maximums.set(subsetSize-1, new Hint(prob, curr_word, k));
+                	int[] k = new int[currSubsetSize];
+                    for(int m=0; m<currSubsetSize; m++){k[m]=currIndicesSubset[m];}
+                    maximums.set(currSubsetSize-1, new Hint(prob, curr_word, k));
                 }
             }
 
             //Update progress bar:
             count++;
-            System.out.print("\r"+"k="+subset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[subsetSize])
+            System.out.print("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize])
                     +"%");
 
         } else {
         	//If we're here, our "subset" doesn't have enough elements yet, so we add more.
-            for (int j = nextIndex; j<size; j++) {
+            for (int j = nextIndex; j<words.size(); j++) {
 
                 boolean contains = false;
 
-                for(int i=0; i<subsetSize; i++){if(subset[i]==j) contains=true;}
+                for(int i=0; i<currSubsetSize; i++){if(currIndicesSubset[i]==j) contains=true;}
                 if(contains) continue;
 
-                subset[subsetSize] = j;
-                checkSubsets(size, subset, subsetSize + 1, j + 1);
+                currIndicesSubset[currSubsetSize] = j;
+                checkSubsets(currIndicesSubset, currSubsetSize + 1, j + 1, maximums);
             }
         }
     }
