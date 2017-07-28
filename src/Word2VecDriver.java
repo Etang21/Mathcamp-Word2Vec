@@ -14,7 +14,7 @@ public class Word2VecDriver {
 		System.out.println(util.wordsCloseTo(query, 10, excluded));
 		
 		//Print cosine similarity between two words
-		util.printCosineSimilarity("horse", "cow"); 
+		util.printCosineSimilarity("cartoon_character", "snowman"); 
 		
 		//Analogies! If A:B = C:D, then B - A + C should = D.
 		float[] vec = util.getVec("king");

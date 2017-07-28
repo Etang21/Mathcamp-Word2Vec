@@ -141,7 +141,7 @@ public class Codenames_UI {
 
     //Returns ArrayList of best hints, where position i stores the best hint for subsets of size i.
     private static ArrayList<Hint> findBestHints() throws IOException {
-        ArrayList<Hint> bestHints = new ArrayList<>();
+        ArrayList<Hint> bestHints = new ArrayList<>(words.size());
     	//Loop through all possible sizes (k) of subsets:
         for (int k=1; k<=words.size(); k++) {
             count = 0;
@@ -149,85 +149,34 @@ public class Codenames_UI {
             
             int[] subset = new int[k];
             checkSubsets(subset, 0, 0, bestHints); //Updates bestHints inside method.
-
             if (bestHints.get(k - 1).prob < GameSettings.SEARCH_CUTOFF) 
             	return bestHints;
         }
         return bestHints;
     }
-    
-    
-    public static float prob(float sim){
-        float arg = B[0] + sim*B[1];
-        return 1.0f/(float)(1+exp(-arg));
-    }
 
+    //Updates maximums to store the best hint for the the subset size of currIndicesSubset size.
     static void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums) throws IOException{
         if (currSubsetSize == currIndicesSubset.length) { //If our subset array contains subsetSize (target) # words
-
-        	//Averages the words from each index of our subset:
-            Matrix average = new Matrix(300,1);
-            for(int index : currIndicesSubset){
-                double[][] curr = new double[300][1];
-                float[] curr_f = util.vectors.get(words.get(index));
-                for(int i=0; i<300; i++) curr[i][0]=(double)curr_f[i];
-                average.plusEquals(new Matrix(curr));
-            }
-            average.timesEquals((double)1/currSubsetSize);
-            float[] average_vec = new float[300];
-            for(int i=0; i<300; i++){average_vec[i] = (float)average.get(i,0);}
+        	//Gets a list of all target words to guess:
+        	ArrayList<String> targetWords = new ArrayList<String>();
+        	for(int index: currIndicesSubset) {
+        		targetWords.add(words.get(index));
+        	}
 
             //Creates an array of the words which we must exclude from our search for hints
             ArrayList<String> excluded = new ArrayList<String>(words);
             excluded.addAll(opp);
-            String[] paramExcluded = new String[excluded.size()];
-            
-            //Finds our candidate hints: the words closest to the average of our subset, excluding substrings and superstrings of words on the board.
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, GameSettings.NUM_CANDIDATES, excluded.toArray(paramExcluded));
-
-            //For each of our 5 candidate words, evaluate the probability that we 
-            //TODO: Let us change how many candidate words we try to find
-            for(int i=0; i<GameSettings.NUM_CANDIDATES; i++){
-                float prob = 1.0f;
-                float min_prob = 1.0f;
-                
-                //Obtain a candidate hint word, with String curr_word and vec hint. //Why do we skip over some words?
-                String curr_word = candidates.get(i).word;
-                float[] hint =  util.vectors.get(curr_word);
-                
-                //For each word in our subset, we check how close our candidate is to that word.
-                for(int c: currIndicesSubset){
-                    float[] card = util.getVec(words.get(c));
-                    float curr_prob = prob(util.cosineSimilarity(hint,card));
-                    prob*=curr_prob;
-                    if(curr_prob<min_prob) min_prob=curr_prob;
-                }
-
-                float max_prob_opp=0; float max_prob_by=0;
-
-                for(String s: opp){
-                    float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
-                    if(curr_prob>max_prob_opp){max_prob_opp = curr_prob;}}
-
-                for(String s: bystanders){
-                    float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
-                    if(curr_prob>max_prob_opp){max_prob_by = curr_prob;}}
-
-                float ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));
-
-                //If this hint meets constraints and beats all probabilities so far for hints of its size (stored in maximums), add it to maximums.
-                if(ass_prob < GameSettings.ASSASSIN_THRESHOLD && max_prob_opp < GameSettings.OPPONENT_THRESHOLD && max_prob_by < GameSettings.BYSTANDER_THRESHOLD && prob > maximums.get(currSubsetSize-1).prob){
-                    //Make a duplicate copy of subset, called k, and add that to maximums.
-                	int[] k = new int[currSubsetSize];
-                    for(int m=0; m<currSubsetSize; m++){k[m]=currIndicesSubset[m];}
-                    maximums.set(currSubsetSize-1, new Hint(prob, curr_word, k));
-                }
+                        
+            //NOTE: This bestHintForAllWords is the key method: take a list of words and strings to exclude, return the best hint. Can be modified.
+            Hint bestHint = bestHintForAllWordsIn(targetWords, excluded);
+            if(bestHint.prob > maximums.get(currIndicesSubset.length-1).prob) {
+            	maximums.set(currIndicesSubset.length-1, bestHint);
             }
-
+            
             //Update progress bar:
             count++;
-            System.out.print("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize])
-                    +"%");
+            System.out.print("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize]) +"%");
 
         } else {
         	//If we're here, our "subset" doesn't have enough elements yet, so we add more.
@@ -242,6 +191,69 @@ public class Codenames_UI {
                 checkSubsets(currIndicesSubset, currSubsetSize + 1, j + 1, maximums);
             }
         }
+    }
+    
+    //Returns the best hint to clue all words in targetWords, excluding substrings of excluded.
+    //TODO: Pass in an array of Strings to the following method, not an arrayList.
+    private static Hint bestHintForAllWordsIn(ArrayList<String> targetWords, ArrayList<String> excluded) {
+    	
+    	//Adds the vectors of all words in targetWords:
+    	float[] avgVec = new float[300];
+    	for(String targetWord: targetWords) {
+    		float[] nextVec = util.getVec(targetWord);
+    		for(int i=0; i<300; i++) { avgVec[i] += nextVec[i]; }
+    	}
+    	for(int i=0; i<300; i++) {
+    		avgVec[i] *= 1f/(float)(targetWords.size());
+    	}
+        
+        //Finds our candidate hints: the words closest to the averageVec, excluding substrings and superstrings of words on the board.
+        ArrayList<WordScore> candidates = util.wordsCloseTo(avgVec, GameSettings.NUM_CANDIDATES, excluded.toArray(new String[excluded.size()]));
+
+        //For all candidates, evaluate probability of hitting target words, and update bestHint if it's good:
+        Hint bestHint = new Hint(-1, "", null);
+        for(int i=0; i<GameSettings.NUM_CANDIDATES; i++){
+            float prob = 1.0f;
+            float min_prob = 1.0f;
+            
+            //Obtain a candidate hint word, with String curr_word and vec hint.
+            String curr_word = candidates.get(i).word;
+            float[] hint =  util.vectors.get(curr_word);
+            
+            //For each word in our subset, we check how close our candidate is to that word.
+            for(String targetWord: targetWords){
+                float[] targetVec = util.getVec(targetWord);
+                float curr_prob = prob(util.cosineSimilarity(hint, targetVec));
+                prob *= curr_prob;
+                if(curr_prob<min_prob) min_prob=curr_prob;
+            }
+
+            float max_prob_opp=0; float max_prob_by=0;
+
+            for(String s: opp){
+                float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
+                if(curr_prob>max_prob_opp){max_prob_opp = curr_prob;}}
+
+            for(String s: bystanders){
+                float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
+                if(curr_prob>max_prob_opp){max_prob_by = curr_prob;}}
+
+            float ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));
+
+            //If this hint meets constraints and is best, replace bestHint.
+            if(ass_prob < GameSettings.ASSASSIN_THRESHOLD && max_prob_opp < GameSettings.OPPONENT_THRESHOLD && max_prob_by < GameSettings.BYSTANDER_THRESHOLD && prob > bestHint.prob) {
+                //Convert our list of words to a list of indices, then return.
+            	int[] indices = new int[targetWords.size()];
+            	for(int j=0; j<targetWords.size(); j++) { indices[j] = words.indexOf(targetWords.get(j)); }
+            	bestHint = new Hint(prob, curr_word, indices);
+            }
+        }
+        return bestHint;
+    }
+    
+    public static float prob(float sim){
+        float arg = B[0] + sim*B[1];
+        return 1.0f/(float)(1+exp(-arg));
     }
 
     //Stores a given hint:
