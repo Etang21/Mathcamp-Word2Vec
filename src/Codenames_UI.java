@@ -22,32 +22,37 @@ public class Codenames_UI {
 
     static int[] num_subsets;
 
-    static float count=0; //A progress bar? I think? -Eric
-
     public static Word2VecUtility util = new Word2VecUtility();
     static ArrayList<String> words = new ArrayList<>();
     static ArrayList<String> opp = new ArrayList<>();
     static ArrayList<String> bystanders = new ArrayList<>();
     static String assassin;
 
-    static ArrayList<Hint> maximums = new ArrayList<>();
-
+    static ArrayList<Hint> maximums = new ArrayList<>(); //Stores the best hint for subset size i at index i.
+    static float count=0; //for progress bar
     static String[] data = new String[404];
 
     public static void main(String[] args) throws IOException {
+
+        util.getVectors(GameSettings.DATABASE_SIZE);
 
         while(true) {
             FileWriter fw = new FileWriter("threshold_data.txt", true);
             BufferedWriter bw = new BufferedWriter(fw);
             PrintWriter out = new PrintWriter(bw);
 
-            words.clear(); opp.clear(); bystanders.clear(); assassin=""; maximums.clear();
-            util.getVectors(100000);
+            words.clear();
+            opp.clear();
+            bystanders.clear();
+            assassin = "";
+            maximums.clear();
 
             //Online functionality is currently broken, so commented out:
             if (GameSettings.PLAY_BOARD_FROM_FILE) {
                 loadBoardFromFile("board.txt");
-            } else {loadBoardFromOnline();}
+            } else {
+                loadBoardFromOnline();
+            }
 
             num_subsets = new int[words.size() + 1];
 
@@ -62,19 +67,18 @@ public class Codenames_UI {
                 num_subsets[k] = result;
             }
 
-            System.out.print("\rgetting hint...");
-            for (int k = 1; k <= words.size(); k++) { //Loops through all sizes of subsets?
+            //Loops through all possible sizes (k) of subsets:
+            for (int k = 1; k <= words.size(); k++) {
                 count = 0;
                 maximums.add(new Hint(0, "", new int[]{0}));
 
                 int[] subset = new int[k]; //The chosen words of a subset?
                 checkSubsets(words.size(), subset, 0, 0);
 
-                if (maximums.get(k - 1).prob < 0.125) break;
+                if (maximums.get(k - 1).prob < Math.pow(GameSettings.SEARCH_CUTOFF, k)) break;
             }
 
             System.out.println();
-            //System.out.println(maximums);
 
             Scanner in = new Scanner(System.in);
             int shift = (maximums.size() > 1) ? 2 : 1;
@@ -86,20 +90,23 @@ public class Codenames_UI {
                 String pick = in.nextLine();
                 if (!words.contains(pick)) {
                     System.out.println("\rincorrect!");
-                    out.print((j+1)+""+0+",");
+                    out.print((j + 1) + "" + 0 + ",");
                     break;
                 }
                 if (j == final_hint.s.length - 1) {
                     System.out.println("\rcorrect!");
-                    out.print(final_hint.s.length+""+1+",");
+                    out.print(final_hint.s.length + "" + 1 + ",");
                 }
             }
 
             String[] intended = new String[final_hint.s.length];
-            for (int j = 0; j < intended.length; j++) {intended[j] = words.get(final_hint.s[j]);}
+            for (int j = 0; j < intended.length; j++) {
+                intended[j] = words.get(final_hint.s[j]);
+            }
             System.out.println("intended cards: " + Arrays.toString(intended));
 
-            System.out.print("quit? "); if(!in.nextLine().equals("")) break;
+            System.out.print("quit? ");
+            if (!in.nextLine().equals("")) break;
             System.out.println();
 
             out.close();
@@ -108,7 +115,6 @@ public class Codenames_UI {
     }
     
     //MARK: Input board methods
-    
     //Scans board from fileName, populates our ArrayLists:
     private static void loadBoardFromFile(String fileName) {
     	try {
@@ -140,6 +146,7 @@ public class Codenames_UI {
     }
 
     //FIXME: Fix this following function. Not hugely important, though.
+
     //Scans board from online, then prints to console
     private static void loadBoardFromOnline() throws IOException {
     	URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
@@ -203,7 +210,7 @@ public class Codenames_UI {
     }
 
     static void checkSubsets(int size, int[] subset, int subsetSize, int nextIndex) throws IOException{
-        if (subsetSize == subset.length) {
+        if (subsetSize == subset.length) { //If our subset array contains subsetSize (target) # words
 
         	//Averages the words from each index of our subset:
             Matrix average = new Matrix(300,1);
@@ -224,18 +231,22 @@ public class Codenames_UI {
             
             //Finds our candidate hints: the 5 words closest to the average of our subset
             //These five words exclude substrings and superstrings of words on the board.
-            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, 10, excluded.toArray(paramExcluded));
+
+            ArrayList<WordScore> candidates = util.wordsCloseTo(average_vec, GameSettings.NUM_CANDIDATES, excluded.toArray(paramExcluded));
 
             //For each of our 5 candidate words, evaluate the probability that we 
-            for(int i=0; i<10; i++){
+            //TODO: Let us change how many candidate words we try to find
+            for(int i=0; i<GameSettings.NUM_CANDIDATES; i++){
+
                 float prob = 1.0f;
                 float min_prob = 1.0f; //used to track card in subset with minimum similarity probability
-                
+
                 //Obtain a candidate hint word, with String curr_word and vec hint.
+
                 String curr_word = candidates.get(i).word;
                 float[] hint =  util.vectors.get(curr_word);
                 
-                //For each word in our subset, we check how our candidate is to that word.
+                //For each word in our subset, we check how close our candidate is to that word.
                 for(int c: subset){
                     float[] card = util.getVec(words.get(c));
                     float curr_prob = prob(util.cosineSimilarity(hint,card));
@@ -255,18 +266,22 @@ public class Codenames_UI {
 
                 float ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));
 
+                //If this hint meets constraints and beats all probabilities so far for hints of its size (stored in maximums), add it to maximums.
                 if(ass_prob < GameSettings.ASSASSIN_THRESHOLD && max_prob_opp < GameSettings.OPPONENT_THRESHOLD && max_prob_by < GameSettings.BYSTANDER_THRESHOLD && prob > maximums.get(subsetSize-1).prob){
-                    int[] k = new int[subsetSize];
+                    //Make a duplicate copy of subset, called k, and add that to maximums.
+                	int[] k = new int[subsetSize];
                     for(int m=0; m<subsetSize; m++){k[m]=subset[m];}
                     maximums.set(subsetSize-1, new Hint(prob, curr_word, k));
                 }
             }
 
+            //Update progress bar:
             count++;
             System.out.print("\r"+"k="+subset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[subsetSize])
                     +"%");
 
         } else {
+        	//If we're here, our "subset" doesn't have enough elements yet, so we add more.
             for (int j = nextIndex; j<size; j++) {
 
                 boolean contains = false;
@@ -280,6 +295,7 @@ public class Codenames_UI {
         }
     }
 
+    //Stores a given hint:
     static class Hint{
         float prob;
         String word;
@@ -307,9 +323,14 @@ public class Codenames_UI {
     	static float BYSTANDER_THRESHOLD = 0.4f;
     	
     	//Play a board from board.txt (true), or play a random online board (false):
-
-    	static boolean PLAY_BOARD_FROM_FILE = false; //THIS FUNCTIONALITY IS CURRENTLY BROKEN.
+    	static boolean PLAY_BOARD_FROM_FILE = false;
     	
+    	//Number of words to search from the Word2Vec database:
+    	static int DATABASE_SIZE = 100000;
+    	
+    	//Number of candidate hints to generate for each subset of words (then checks all these candidates), default 5:
+    	static int NUM_CANDIDATES = 10;
+
     	//If you want the board to print intended cards before or after you guess, or never:
     	
     	//If you want to play the computer and have it update itself:

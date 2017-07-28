@@ -18,8 +18,11 @@ palm
 lock
 tick
 7
+night
+charge
+sink
+club
+needle
+bug
+December
 figure
-cat
-spike
-roulette
-knight draft wind seal
