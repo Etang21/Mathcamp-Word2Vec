@@ -122,9 +122,7 @@ public class Word2VecUtility {
 
 	public float printCosineSimilarity(String word1, String word2)  {
 		float[] firstVec = getVec(word1);
-		System.out.println("\"" + word1 + "\" vec is " + Arrays.toString(firstVec));
 		float[] secondVec = getVec(word2);
-		System.out.println("\"" + word2 + "\" vec is " + Arrays.toString(secondVec));
 		float cosSim = cosineSimilarity(firstVec, secondVec);
 		System.out.println("Cosine similarity between " + word1 + " and " + word2 + ": " + cosSim);
 		return cosSim;
@@ -183,6 +181,20 @@ public class Word2VecUtility {
 		if(a.length!=b.length) throw new IllegalArgumentException("vectors must be of the same length");
 		for(int i=0; i<a.length; i++){sum+=(a[i]-b[i])*(a[i]-b[i]);}
 		return (float)Math.sqrt(sum);
+	}
+	
+	public float euclideanDistanceUnnormalized(float[] a, float[] b){
+		double sum=0;
+		for(int i=0; i<a.length; i++){sum+=(a[i]-b[i])*(a[i]-b[i]);}
+		return (float)Math.sqrt(sum);
+	}
+	
+	public float printEuclideanDistance(String word1, String word2) {
+		float[] firstVec = getVec(word1);
+		float[] secondVec = getVec(word2);
+		float eucDist = euclideanDistanceUnnormalized(firstVec, secondVec);
+		System.out.println("Euclidean distance between " + word1 + " and " + word2 + ": " + eucDist);
+		return eucDist;
 	}
 }
 
