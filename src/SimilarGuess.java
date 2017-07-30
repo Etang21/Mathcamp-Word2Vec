@@ -18,7 +18,7 @@ public class SimilarGuess {
         System.out.println("retrieving word vectors...");
         util.getVectors(100000);
 
-        FileWriter fw = new FileWriter("logistic.txt", true);
+        FileWriter fw = new FileWriter("logistic_data.txt", true);
         BufferedWriter bw = new BufferedWriter(fw);
         PrintWriter data = new PrintWriter(bw);
         Scanner in = new Scanner(System.in);
@@ -47,7 +47,7 @@ public class SimilarGuess {
                 if(curr.equals(word)) continue;
 
                 float[] curr_vec = util.getVec(curr);
-                float sim = util.l2norm(curr_vec, vec);
+                float sim = util.cosineSimilarity(curr_vec, vec);
 
                 System.out.print(curr+":");
                 String result = in.next();
