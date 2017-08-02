@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
-public class Word2VecDriver {
+public class MetricTesting {
 
 	public static void main(String[] args) throws IOException {
 		Word2VecUtility util = new Word2VecUtility();
