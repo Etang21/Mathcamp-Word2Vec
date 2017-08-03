@@ -1,12 +1,18 @@
 import Jama.Matrix;
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.json.*;
 
 import java.io.*;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Scanner;
+
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
 
 import static java.lang.Math.exp;
 
@@ -16,21 +22,146 @@ import static java.lang.Math.exp;
 
 //9 one color, 8 another, 1 assasin, 7 bystanders
 
-public class Codenames_UI {
+public class Codenames_UI{
+
+    private JFrame mainFrame;
+
+    private JLabel headerLabel;
+    private JLabel statusLabel;
+    private JPanel controlPanel;
+
+    private JLabel hint;
+    private JLabel score_show;
+
+    private JPanel board;
+    private JPanel bottom;
+
+    int score=0;
+
+    boolean choosing = false;
+
+    ArrayList<Card> cards = new ArrayList<>();
+
+    public static String MODE = "START";
 
     static int[] num_subsets;
 
     public static Word2VecUtility util = new Word2VecUtility();
 
-    static ArrayList<String> words = new ArrayList<>();
-    static ArrayList<String> opp = new ArrayList<>();
-    static ArrayList<String> bystanders = new ArrayList<>();
-    static String assassin;
+    ArrayList<String> words = new ArrayList<>();
+    ArrayList<String> opp = new ArrayList<>();
+    ArrayList<String> bystanders = new ArrayList<>();
+    String assassin;
+
+    ArrayList<String> clues = new ArrayList<>();
 
     static GameSettings game_set;
     static float count=0; //for progress bar
 
-    public static void main(String[] args) throws IOException {
+    public Codenames_UI(){prepareGUI();}
+
+    private void prepareGUI(){
+        mainFrame = new JFrame("Codenames");
+        mainFrame.setSize(700,500);
+        mainFrame.setLayout(new GridLayout(3, 1));
+        mainFrame.setResizable(false);
+
+        mainFrame.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent windowEvent){
+                System.exit(0);
+            }
+        });
+        headerLabel = new JLabel("", JLabel.CENTER);
+        headerLabel.setFont(new Font("Tahoma", Font.BOLD, 35));
+        statusLabel = new JLabel("word2vec project group - Mathcamp 2017",JLabel.CENTER);
+
+        hint = new JLabel("", JLabel.CENTER);
+        score_show = new JLabel("<html><div style='text-align: center;'> <b>score: </b>0</div></html>");
+
+        bottom = new JPanel();
+        bottom.setLayout(new FlowLayout());
+        bottom.setPreferredSize(new Dimension(700,30));
+        bottom.setMaximumSize(bottom.getPreferredSize());
+        bottom.setOpaque(true);
+        bottom.setBackground(new Color(204,243,255));
+
+        bottom.add(score_show);
+        bottom.add(hint);
+
+        controlPanel = new JPanel();
+        controlPanel.setLayout(new FlowLayout());
+        controlPanel.setFont(new Font("Tahoma", Font.PLAIN, 12));
+
+        board = new JPanel();
+        board.setLayout(new GridLayout(5,5));
+
+        mainFrame.add(headerLabel);
+        mainFrame.add(controlPanel);
+        mainFrame.add(statusLabel);
+        mainFrame.setVisible(true);
+    }
+
+    private void start(){
+        headerLabel.setText("Codenames AI");
+
+        JButton play = new JButton("Play");
+        JButton settings = new JButton("Settings");
+        JButton save = new JButton("Save");
+        JButton train =  new JButton("Train");
+        save.setHorizontalTextPosition(SwingConstants.LEFT);
+
+        play.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                mainFrame.getContentPane().removeAll();
+                mainFrame.setLayout(new BoxLayout(mainFrame.getContentPane(), BoxLayout.PAGE_AXIS));
+                mainFrame.add(board);
+                mainFrame.add(bottom);
+
+                mainFrame.setVisible(true);
+                mainFrame.validate();
+                mainFrame.repaint();
+
+                MODE="GAME";
+                Thread run_game = new Thread(new Runnable() {
+                    @Override
+                    public void run(){try{game();}catch (IOException e){e.printStackTrace();}}
+                });
+                run_game.start();
+            }
+        });
+        settings.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                statusLabel.setText("Submit Button clicked.");
+            }
+        });
+        save.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                statusLabel.setText("Cancel Button clicked.");
+            }
+        });
+
+        train.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainFrame.setVisible(false);
+
+                MODE="TRAIN";
+                Thread run_game = new Thread(new Runnable() {
+                    @Override
+                    public void run() {try{train();}catch (IOException e){e.printStackTrace();}}
+                });
+                run_game.start();
+            }
+        });
+        controlPanel.add(play);
+        controlPanel.add(train);
+        controlPanel.add(settings);
+        controlPanel.add(save);
+
+        mainFrame.setVisible(true);
+    }
+
+    private void train() throws IOException{
 
         int[] search_para = new int[]{100000,10};
         TrainState ts = new TrainState("training_settings.txt");
@@ -40,11 +171,17 @@ public class Codenames_UI {
         util.getVectors(game_set.DATABASE_SIZE);
 
         while(true){
+            int param = (ts.it%(10*ts.n))/(2*ts.n);
+
             if(ts.it%(2*ts.n)==0 && ts.it>0){
+                ts.curr_settings[param-1]-= ts.adjustments[param];
+
                 ts.gradient[(ts.it%(10*ts.n))/(2*ts.n)-1] = 0.05f*(ts.score[1]-ts.score[0])/ts.adjustments[(ts
                         .it%(10*ts.n))/(2*ts.n)-1];
                 System.out.println("current parameter:"+(ts.it%(10*ts.n))/(2*ts.n));
                 System.out.println(Arrays.toString(ts.gradient));
+
+                ts.score[0]=0; ts.score[1]=0;
             }
 
             if(ts.it%(10*ts.n)==0){
@@ -53,20 +190,17 @@ public class Codenames_UI {
             }
 
             if(ts.it%ts.n==0){
-                int param = (ts.it%(10*ts.n))/(2*ts.n);
 
-                if((ts.it%(2*ts.n))/(ts.n)==1){ts.curr_settings[param] += ts.adjustments[param];}
+                if((ts.it%(2*ts.n))/(ts.n)==1){ts.curr_settings[param] += 2*ts.adjustments[param];}
                 else{ts.curr_settings[param] -= ts.adjustments[param];}
 
                 System.out.println("current settings:"+Arrays.toString(ts.curr_settings));
 
                 game_set = new GameSettings(ts.curr_settings,search_para, false);
-
-                if((ts.it%(2*ts.n))/(ts.n)==1){ts.curr_settings[param] -= ts.adjustments[param];}
-                else{ts.curr_settings[param] += ts.adjustments[param];}
             }
 
             System.out.println(ts.it%ts.n+1 + "/"+ts.n);
+            System.out.println(game_set.SEARCH_CUTOFF + "," + game_set.MIN_PROB);
 
 //            FileWriter fw = new FileWriter("threshold_data.txt", true);
 //            BufferedWriter bw = new BufferedWriter(fw);
@@ -79,10 +213,21 @@ public class Codenames_UI {
             bystanders.clear();
             assassin = "";
 
+            System.out.println("GA");
+
+            ArrayList<String> card_set = new ArrayList<>();
+
             if (game_set.PLAY_BOARD_FROM_FILE) {
                 loadBoardFromFile("board.txt");
-            } else {loadBoardFromOnline();}
-            
+            } else {card_set=loadBoardFromOnline();}
+
+            for (int j = 0; j < 5; j++) {
+                for (int x = 0; x < 4; x++) {
+                    System.out.print(card_set.get(5 * j + x) + " ");
+                }
+                System.out.println(card_set.get(5 * j + 4));
+            }
+
             num_subsets = new int[words.size() + 1];
             for (int k = 0; k < num_subsets.length; k++) {
                 int result = 1;
@@ -101,33 +246,34 @@ public class Codenames_UI {
             Hint final_hint = maximums.get(maximums.size() - shift);
             System.out.println("hint: " + final_hint.word + "," + final_hint.s.length);
 
-            for (int j = 0; j < final_hint.s.length; j++) {
-                System.out.print("pick " + j + ":");
-                String pick = in.nextLine();
-                if (!words.contains(pick)) {
-                    System.out.println("incorrect!");
-                    //score[(it%40)/20]+=(j-1);
-                    //out.print((j) + "" + 0 + ",");
-                    break;
-                }
-                if (j == final_hint.s.length - 1) {
-                    System.out.println("correct!");
-                    //score[(it%40)/20]+=(final_hint.s.length);
-                    //out.print(final_hint.s.length + "" + 1 + ",");
-                }
-            }
+//            for (int j = 0; j < final_hint.s.length; j++) {
+//                System.out.print("pick " + j + ":");
+//                String pick = in.nextLine();
+//                if (!words.contains(pick)) {
+//                    System.out.println("incorrect!");
+//                    //score[(it%40)/20]+=(j-1);
+//                    //out.print((j) + "" + 0 + ",");
+//                    break;
+//                }
+//                if (j == final_hint.s.length - 1) {
+//                    System.out.println("correct!");
+//                    //score[(it%40)/20]+=(final_hint.s.length);
+//                    //out.print(final_hint.s.length + "" + 1 + ",");
+//                }
+//            }
 
             String[] intended = new String[final_hint.s.length];
             for (int j = 0; j < intended.length; j++) {
                 intended[j] = words.get(final_hint.s[j]);
             }
             System.out.println("intended cards: " + Arrays.toString(intended));
+            System.out.println("ours: " + words);
+            System.out.println("opp: " + opp);
 
             System.out.print("score increase:"); int inc = Integer.parseInt(in.nextLine());
 
             if(inc!=-2) {
                 ts.score[(ts.it % (2 * ts.n)) / ts.n] += inc;
-
                 System.out.println(ts.score[(ts.it % (2 * ts.n)) / ts.n] / (ts.it % ts.n + 1));
                 ts.it++;
             }
@@ -143,10 +289,121 @@ public class Codenames_UI {
         }
     }
 
+    private void game() throws IOException{
+
+        int[] search_para = new int[]{100000,10};
+        File file = new File("game_settings.txt");
+        Scanner settings = new Scanner(new FileInputStream(file));
+
+        float[] param = new float[5];
+        for(int i=0; i<5; i++){param[i] = settings.nextFloat();}
+
+        game_set = new GameSettings(param, search_para, false);
+
+        util.getVectors(game_set.DATABASE_SIZE);
+        boolean start_game = true;
+
+        while(true){
+            if(start_game==true){
+                start_game=false;
+
+                cards.clear();
+                words.clear();
+                opp.clear();
+                bystanders.clear();
+                assassin = "";
+
+                if (game_set.PLAY_BOARD_FROM_FILE) {
+                    loadBoardFromFile("board.txt");
+                } else {loadBoardFromOnline();}
+
+                board.removeAll();
+                board.revalidate();
+                board.repaint();
+
+                for(String s : words) cards.add(new Card(s, "ours"));
+                for(String s : opp) cards.add(new Card(s, "opp"));
+                for(String s : bystanders) cards.add(new Card(s, "by"));
+                cards.add(new Card(assassin, "assn"));
+
+                Collections.shuffle(cards);
+
+                for(int m=0; m<25; m++){board.add(cards.get(m));}
+                mainFrame.setVisible(true);
+                mainFrame.validate();
+                mainFrame.repaint();
+            }
+
+            num_subsets = new int[words.size() + 1];
+            for (int k = 0; k < num_subsets.length; k++) {
+                int result = 1;
+                for (int i = 0; i < k; i++) {
+                    result *= (words.size() - i);
+                }
+                for (int i = 1; i <= k; i++) {
+                    result /= i;
+                }
+                num_subsets[k] = result;
+            }
+
+            ArrayList<Hint> maximums = findBestHints();
+            int shift = (maximums.size() > 1) ? 2 : 1;
+            Hint final_hint = maximums.get(maximums.size() - shift);
+
+            clues.add(final_hint.word);
+            hint.setText("<html><div style='text-align: center;'> <b>hint: </b>" + final_hint.word + "," + final_hint
+                    .s.length + "</div></html>");
+
+            for (int j = 0; j < final_hint.s.length; j++) {
+                String pick="";
+                choosing = true;
+                while(choosing){
+                    for(Card c : cards){
+                        if(c.state==1){
+                            pick = c.getText();
+                            c.state=2;
+                            choosing = false;
+                            break;
+                        }
+                    }
+                }
+                if (!words.contains(pick)) {
+                    System.out.println("incorrect!");
+                    if(pick.equals(assassin))assassin="";
+
+                    bystanders.remove(pick);
+                    opp.remove(pick);
+                    break;
+                }
+                words.remove(pick);
+                if (j == final_hint.s.length - 1) {
+                    System.out.println("correct!");
+                }
+                score++;
+                score_show.setText("<html><div style='text-align: center;'> <b>score: </b>" + score + "</div></html>");
+            }
+
+            String[] intended = new String[final_hint.s.length];
+            for (int j = 0; j < intended.length; j++) {
+                intended[j] = words.get(final_hint.s[j]);
+            }
+            System.out.println("intended cards: " + Arrays.toString(intended));
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                Codenames_UI  display = new Codenames_UI();
+                display.start();
+            }
+        });
+    }
+
     //MARK: Input board methods
 
     //Scans board from fileName, populates our ArrayLists:
-    private static void loadBoardFromFile(String fileName) {
+    private void loadBoardFromFile(String fileName) {
     	try {
 	    	File file = new File(fileName);
 	        Scanner boardInput = new Scanner(file);
@@ -174,11 +431,14 @@ public class Codenames_UI {
     }
 
     //Scans board from online, then prints to console
-    private static void loadBoardFromOnline() throws IOException {
+    private ArrayList<String> loadBoardFromOnline() throws IOException {
     	URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
         //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/game-id-words.txt");
         //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/words.txt");
-        Scanner s = new Scanner(url.openStream());
+        URLConnection con = url.openConnection();
+        con.setConnectTimeout(5000);
+        con.setReadTimeout(20000);
+        Scanner s = new Scanner(con.getInputStream());
 
         String[] data = new String[404];
 
@@ -217,30 +477,25 @@ public class Codenames_UI {
                 assassin="";
             } else n++;
         }
+        ArrayList<String> card_set = new ArrayList<String>();
+        card_set.addAll(words);
+        card_set.addAll(opp);
+        card_set.addAll(bystanders);
+        card_set.add(assassin);
+        Collections.shuffle(card_set);
 
-        ArrayList<String> cards = new ArrayList<>();
-        cards.addAll(words);
-        cards.addAll(opp);
-        cards.addAll(bystanders);
-        cards.add(assassin);
-        Collections.shuffle(cards);
-
-        for (int j = 0; j < 5; j++) {
-            for (int x = 0; x < 4; x++) {
-                System.out.print(cards.get(5 * j + x) + " ");
-            }
-            System.out.println(cards.get(5 * j + 4));
-        }
         s.close();
+
+        return card_set;
     }
 
-    public static float prob(float sim) {
+    public float prob(float sim) {
         float arg = game_set.B[0] + sim * game_set.B[1];
         return 1.0f / (float) (1 + exp(-arg));
     }
 
     //Returns ArrayList of best hints, where position i stores the best hint for subsets of size i.
-    private static ArrayList<Hint> findBestHints() throws IOException {
+    private ArrayList<Hint> findBestHints() throws IOException {
         ArrayList<Hint> bestHints = new ArrayList<>(words.size());
     	//Loop through all possible sizes (k) of subsets:
         for (int k=1; k<=words.size(); k++) {
@@ -249,14 +504,16 @@ public class Codenames_UI {
             
             int[] subset = new int[k];
             checkSubsets(subset, 0, 0, bestHints); //Updates bestHints inside method.
-            if (bestHints.get(k - 1).prob < game_set.SEARCH_CUTOFF)
+            if (bestHints.get(k - 1).prob < Math.pow(game_set.SEARCH_CUTOFF,k))
             	return bestHints;
         }
         return bestHints;
     }
 
     //Updates maximums to store the best hint for the the subset size of currIndicesSubset size.
-    static void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums) throws IOException{
+    private void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums)
+            throws
+            IOException{
         if (currSubsetSize == currIndicesSubset.length) { //If our subset array contains subsetSize (target) # words
         	//Gets a list of all target words to guess:
         	ArrayList<String> targetWords = new ArrayList<String>();
@@ -267,9 +524,12 @@ public class Codenames_UI {
             //Creates an array of the words which we must exclude from our search for hints
             ArrayList<String> excluded = new ArrayList<String>(words);
             excluded.addAll(opp);
+            excluded.addAll(words);
+            excluded.addAll(bystanders);
+            excluded.addAll(clues);
 
             //NOTE: This bestHintForAllWords is the key method: take a list of words and strings to exclude, return the best hint. Can be modified.
-            Hint bestHint = bestHintForAllWordsIn(targetWords, excluded);
+            Hint bestHint = best_hint_for(targetWords, excluded);
 
             if(bestHint.prob > maximums.get(currIndicesSubset.length-1).prob) {
             	maximums.set(currIndicesSubset.length-1, bestHint);
@@ -277,7 +537,8 @@ public class Codenames_UI {
             
             //Update progress bar:
             count++;
-            System.out.print("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize]) +"%");
+            hint.setText("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize])
+                    +"%");
 
         } else {
         	//If we're here, our "subset" doesn't have enough elements yet, so we add more.
@@ -296,62 +557,119 @@ public class Codenames_UI {
     
     //Returns the best hint to clue all words in targetWords, excluding substrings of excluded.
     //TODO: Pass in an array of Strings to the following method, not an arrayList.
-    private static Hint bestHintForAllWordsIn(ArrayList<String> targetWords, ArrayList<String> excluded) {
-    	
-    	//Adds the vectors of all words in targetWords:
-    	float[] avgVec = new float[300];
-    	for(String targetWord: targetWords) {
-    		float[] nextVec = util.getVec(targetWord);
-    		for(int i=0; i<300; i++) { avgVec[i] += nextVec[i]; }
-    	}
-    	for(int i=0; i<300; i++) {
-    		avgVec[i] *= 1f/(float)(targetWords.size());
-    	}
-        
+    private Hint best_hint_for(ArrayList<String> targetWords, ArrayList<String> excluded) {
+
+        //Adds the vectors of all words in targetWords:
+        float[] avgVec = new float[300];
+        for (String targetWord : targetWords) {
+            float[] nextVec = util.getVec(targetWord);
+            for (int i = 0; i < 300; i++) {
+                avgVec[i] += nextVec[i];
+            }
+        }
+        for (int i = 0; i < 300; i++) {
+            avgVec[i] *= 1f / (float) (targetWords.size());
+        }
+
         //Finds our candidate hints: the words closest to the averageVec, excluding substrings and superstrings of words on the board.
         ArrayList<WordScore> candidates = util.wordsCloseTo(avgVec, game_set.NUM_CANDIDATES, excluded.toArray(new
                 String[excluded.size()]));
 
         //For all candidates, evaluate probability of hitting target words, and update bestHint if it's good:
         Hint bestHint = new Hint(-1, "", null);
-        for(int i=0; i<game_set.NUM_CANDIDATES; i++){
+        for (int i = 0; i < game_set.NUM_CANDIDATES; i++) {
             float prob = 1.0f;
             float min_prob = 1.0f;
-            
+
             //Obtain a candidate hint word, with String curr_word and vec hint.
             String curr_word = candidates.get(i).word;
-            float[] hint =  util.vectors.get(curr_word);
-            
+            float[] hint = util.vectors.get(curr_word);
+
+            if(clues.contains(curr_word)) continue;
+
             //For each word in our subset, we check how close our candidate is to that word.
-            for(String targetWord: targetWords){
+            for (String targetWord : targetWords) {
                 float[] targetVec = util.getVec(targetWord);
                 float curr_prob = prob(util.cosineSimilarity(hint, targetVec));
                 prob *= curr_prob;
-                if(curr_prob<min_prob) min_prob=curr_prob;
+                if (curr_prob < min_prob) min_prob = curr_prob;
             }
 
-            float max_prob_opp=0; float max_prob_by=0;
+            float max_prob_opp = 0;
+            float max_prob_by = 0;
 
-            for(String s: opp){
+            for (String s : opp) {
                 float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
-                if(curr_prob>max_prob_opp){max_prob_opp = curr_prob;}}
+                if (curr_prob > max_prob_opp) {
+                    max_prob_opp = curr_prob;
+                }
+            }
 
-            for(String s: bystanders){
+            for (String s : bystanders) {
                 float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
-                if(curr_prob>max_prob_opp){max_prob_by = curr_prob;}}
+                if (curr_prob > max_prob_opp) {
+                    max_prob_by = curr_prob;
+                }
+            }
 
-            float ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));
+            float ass_prob=0;
+            if(!assassin.equals("")) {ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));}
 
             //If this hint meets constraints and is best, replace bestHint.
-            if(ass_prob < game_set.ASSASSIN_THRESHOLD && max_prob_opp < game_set.OPPONENT_THRESHOLD && max_prob_by <
-                    game_set.BYSTANDER_THRESHOLD && prob > bestHint.prob) {
+            if (min_prob > game_set.MIN_PROB && ass_prob < game_set.ASSASSIN_THRESHOLD && max_prob_opp < game_set
+                    .OPPONENT_THRESHOLD &&
+                    max_prob_by <
+                            game_set.BYSTANDER_THRESHOLD && prob > bestHint.prob) {
                 //Convert our list of words to a list of indices, then return.
-            	int[] indices = new int[targetWords.size()];
-            	for(int j=0; j<targetWords.size(); j++) { indices[j] = words.indexOf(targetWords.get(j)); }
-            	bestHint = new Hint(prob, curr_word, indices);
+                int[] indices = new int[targetWords.size()];
+                for (int j = 0; j < targetWords.size(); j++) {
+                    indices[j] = words.indexOf(targetWords.get(j));
+                }
+                bestHint = new Hint(prob, curr_word, indices);
             }
         }
         return bestHint;
+    }
+
+    class Card extends JButton{
+        String type;
+        int state = 0;
+
+        public Card(String word, String type) {
+            super(word); this.type = type;
+            this.setFont(new Font("Tahoma", Font.BOLD, 16));
+
+            this.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if(choosing==true) {
+                        Card source = (Card) e.getSource();
+                        source.setOpaque(true);
+                        source.setBorderPainted(false);
+
+                        if (state != 2) {state = 1;}
+                        switch (source.type) {
+                            case "ours":
+                                source.setForeground(Color.white);
+                                source.setBackground(new Color(31, 150, 124));
+                                break;
+                            case "opp":
+                                source.setForeground(Color.white);
+                                source.setBackground(new Color(158, 30, 44));
+                                break;
+                            case "by":
+                                source.setForeground(Color.white);
+                                source.setBackground(new Color(160, 132, 19));
+                                break;
+                            case "assn":
+                                source.setForeground(Color.white);
+                                source.setBackground(new Color(119, 71, 107));
+                                break;
+                        }
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -476,6 +794,7 @@ class GameSettings {
 
         PLAY_BOARD_FROM_FILE = mode;
     }
+
 
     public GameSettings(){}
 }

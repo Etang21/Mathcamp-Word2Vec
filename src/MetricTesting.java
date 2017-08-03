@@ -12,8 +12,10 @@ public class MetricTesting {
 	public static void main(String[] args) throws IOException {
 		Word2VecUtility util = new Word2VecUtility();
 		util.getVectors(100000);
+
+		System.out.println(util.cosineSimilarity(util.getVec("pack"), util.getVec("backpack")));
 		
-		testLotsOfHints(util);
+		//testLotsOfHints(util);
 		//testCosMetrics(util);
 		
 		/*
