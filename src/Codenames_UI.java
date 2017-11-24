@@ -1,7 +1,4 @@
-import Jama.Matrix;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.json.*;
-
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
@@ -18,9 +15,12 @@ import static java.lang.Math.exp;
 
 /**
  * Created by dawsonbyrd on 7/20/17.
+ * 
+ * This class runs the Codenames board game on a JFrame interface. Provides a computer
+ * spymaster to give clues. Allows the user to play solo with the computer.
  */
 
-//9 one color, 8 another, 1 assasin, 7 bystanders
+//9 one color, 8 another, 1 assassin, 7 bystanders
 
 public class Codenames_UI{
 
@@ -290,48 +290,14 @@ public class Codenames_UI{
     }
 
     private void game() throws IOException{
-
-        int[] search_para = new int[]{100000,10};
-        File file = new File("game_settings.txt");
-        Scanner settings = new Scanner(new FileInputStream(file));
-
-        float[] param = new float[5];
-        for(int i=0; i<5; i++){param[i] = settings.nextFloat();}
-
-        game_set = new GameSettings(param, search_para, false);
-
+    		game_set = loadGameSettings();
         util.getVectors(game_set.DATABASE_SIZE);
         boolean start_game = true;
 
-        while(true){
-            if(start_game==true){
+        while(true) {
+            if(start_game) {
                 start_game=false;
-
-                cards.clear();
-                words.clear();
-                opp.clear();
-                bystanders.clear();
-                assassin = "";
-
-                if (game_set.PLAY_BOARD_FROM_FILE) {
-                    loadBoardFromFile("board.txt");
-                } else {loadBoardFromOnline();}
-
-                board.removeAll();
-                board.revalidate();
-                board.repaint();
-
-                for(String s : words) cards.add(new Card(s, "ours"));
-                for(String s : opp) cards.add(new Card(s, "opp"));
-                for(String s : bystanders) cards.add(new Card(s, "by"));
-                cards.add(new Card(assassin, "assn"));
-
-                Collections.shuffle(cards);
-
-                for(int m=0; m<25; m++){board.add(cards.get(m));}
-                mainFrame.setVisible(true);
-                mainFrame.validate();
-                mainFrame.repaint();
+                loadInitialUI();
             }
 
             num_subsets = new int[words.size() + 1];
@@ -346,14 +312,23 @@ public class Codenames_UI{
                 num_subsets[k] = result;
             }
 
+            //Get array of best hints, select the second largest one:
             ArrayList<Hint> maximums = findBestHints();
             int shift = (maximums.size() > 1) ? 2 : 1;
             Hint final_hint = maximums.get(maximums.size() - shift);
 
+            //Store intended words:
+            String[] intended = new String[final_hint.s.length];
+            for (int targetIndex : final_hint.s) {
+                intended[targetIndex] = words.get(final_hint.s[targetIndex]);
+            }
+            
+            //Print clue:
             clues.add(final_hint.word);
             hint.setText("<html><div style='text-align: center;'> <b>hint: </b>" + final_hint.word + "," + final_hint
                     .s.length + "</div></html>");
 
+            //User chooses cards:
             for (int j = 0; j < final_hint.s.length; j++) {
                 String pick="";
                 choosing = true;
@@ -382,15 +357,51 @@ public class Codenames_UI{
                 score++;
                 score_show.setText("<html><div style='text-align: center;'> <b>score: </b>" + score + "</div></html>");
             }
-
-            String[] intended = new String[final_hint.s.length];
-            for (int j = 0; j < intended.length; j++) {
-                intended[j] = words.get(final_hint.s[j]);
-            }
+            
             System.out.println("intended cards: " + Arrays.toString(intended));
         }
     }
+    
+    private void loadInitialUI() throws IOException {
+        cards.clear();
+        words.clear();
+        opp.clear();
+        bystanders.clear();
+        assassin = "";
 
+        if (game_set.PLAY_BOARD_FROM_FILE) {
+            loadBoardFromFile("board.txt");
+        } else {loadBoardFromOnline();}
+
+        board.removeAll();
+        board.revalidate();
+        board.repaint();
+
+        for(String s : words) cards.add(new Card(s, "ours"));
+        for(String s : opp) cards.add(new Card(s, "opp"));
+        for(String s : bystanders) cards.add(new Card(s, "by"));
+        cards.add(new Card(assassin, "assn"));
+
+        Collections.shuffle(cards);
+
+        for(int m=0; m<25; m++){board.add(cards.get(m));}
+        mainFrame.setVisible(true);
+        mainFrame.validate();
+        mainFrame.repaint();
+    }
+
+    private GameSettings loadGameSettings() throws IOException {
+    		int[] search_para = new int[]{100000,10};
+        File file = new File("game_settings.txt");
+        Scanner settings = new Scanner(new FileInputStream(file));
+        float[] param = new float[5];
+        for(int i=0; i<5; i++) {
+        		param[i] = settings.nextFloat();
+        	}
+        settings.close();
+        return new GameSettings(param, search_para, false);
+    }
+    
     public static void main(String[] args) throws IOException {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
@@ -497,7 +508,8 @@ public class Codenames_UI{
     //Returns ArrayList of best hints, where position i stores the best hint for subsets of size i.
     private ArrayList<Hint> findBestHints() throws IOException {
         ArrayList<Hint> bestHints = new ArrayList<>(words.size());
-    	//Loop through all possible sizes (k) of subsets:
+        
+        //Loop through all possible sizes (k) of subsets:
         for (int k=1; k<=words.size(); k++) {
             count = 0;
             bestHints.add(new Hint(0, "", new int[]{0}));
@@ -555,27 +567,14 @@ public class Codenames_UI{
         }
     }
     
-    //Returns the best hint to clue all words in targetWords, excluding substrings of excluded.
-    //TODO: Pass in an array of Strings to the following method, not an arrayList.
+    /** Returns the best hint to clue for all words in targetWords, excluding substrings/superstrings of excluded. */
     private Hint best_hint_for(ArrayList<String> targetWords, ArrayList<String> excluded) {
+    	
+        //Finds our candidate hints: the words closest to the sum/average of our target words:
+        float[] avgVec = averageVectorFor(targetWords);
+        ArrayList<WordScore> candidates = util.wordsCloseTo(avgVec, game_set.NUM_CANDIDATES, excluded.toArray(new String[excluded.size()]));
 
-        //Adds the vectors of all words in targetWords:
-        float[] avgVec = new float[300];
-        for (String targetWord : targetWords) {
-            float[] nextVec = util.getVec(targetWord);
-            for (int i = 0; i < 300; i++) {
-                avgVec[i] += nextVec[i];
-            }
-        }
-        for (int i = 0; i < 300; i++) {
-            avgVec[i] *= 1f / (float) (targetWords.size());
-        }
-
-        //Finds our candidate hints: the words closest to the averageVec, excluding substrings and superstrings of words on the board.
-        ArrayList<WordScore> candidates = util.wordsCloseTo(avgVec, game_set.NUM_CANDIDATES, excluded.toArray(new
-                String[excluded.size()]));
-
-        //For all candidates, evaluate probability of hitting target words, and update bestHint if it's good:
+        //For all candidates, evaluate probability of guessing target words, and update bestHint if it's good:
         Hint bestHint = new Hint(-1, "", null);
         for (int i = 0; i < game_set.NUM_CANDIDATES; i++) {
             float prob = 1.0f;
@@ -629,6 +628,22 @@ public class Codenames_UI{
             }
         }
         return bestHint;
+    }
+    
+    /** Returns component-wise average of all vectors for words in targetWords */
+    private float[] averageVectorFor(ArrayList<String> targetWords) {
+    		//Note: Could normalize these before averaging. Or just sum - no need to average?
+	    	float[] avgVec = new float[300];
+        for (String targetWord : targetWords) {
+            float[] nextVec = util.getVec(targetWord);
+            for (int i = 0; i < 300; i++) {
+                avgVec[i] += nextVec[i];
+            }
+        }
+        for (int i = 0; i < 300; i++) {
+            avgVec[i] *= 1f / (float) (targetWords.size());
+        }
+        return avgVec;
     }
 
     class Card extends JButton{
@@ -761,8 +776,8 @@ class GameSettings {
     final float[] B = new float[]{-3.55106049399243f, 11.8332877194120f};
 
     //Probability below which you stop searching for clues:
-    float SEARCH_CUTOFF = 0.55f;
-    float MIN_PROB = 0.4f;
+    float SEARCH_CUTOFF = 0.6f;
+    float MIN_PROB = 0.6f;
 
     //Probabilities above which you avoid clues:
     float ASSASSIN_THRESHOLD = 0.20f;
@@ -773,7 +788,7 @@ class GameSettings {
     boolean PLAY_BOARD_FROM_FILE = false;
 
     //Number of words to search from the Word2Vec database:
-    int DATABASE_SIZE = 100000;
+    int DATABASE_SIZE = 25000;
 
     //Number of candidate hints to generate for each subset of words (then checks all these candidates), default 5:
     int NUM_CANDIDATES = 10;
