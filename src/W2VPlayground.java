@@ -29,11 +29,11 @@ public class W2VPlayground {
 			}
 			else if(choice.equalsIgnoreCase("Analogies")) {
 				System.out.println("A is to B as C is to . . .");
-				System.out.println("A: ");
+				System.out.print("A: ");
 				String A = s.next();
-				System.out.println("B: ");
+				System.out.print("B: ");
 				String B = s.next();
-				System.out.println("C: ");
+				System.out.print("C: ");
 				String C = s.next();
 				solveAnalogy(A, B, C, util);
 			}

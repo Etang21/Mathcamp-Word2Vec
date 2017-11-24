@@ -2,18 +2,14 @@ import java.io.*;
 import java.nio.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.math.*;
 import java.util.*;
 
 /* Things that might be good to add!
 1. Add a "progress bar" to show where we are in processing the file when searching it.
 2. To calibrate that progress bar, scroll through the whole file and print every 5,000th word. Print time as well.
-Post results to groupchat.
 3. Find some way to consolidate all the buffered input lines
-4. Condense all the damned IOExceptions by actually using try-catch
 5. Require users to populate vectors HashMap up front by making it part of the constructor
-6. Make methods more robust if they don't find a given word
+6. Make methods fail more gracefully if the given word isn't in the dictionary
  */
 
 public class Word2VecUtility {
@@ -21,7 +17,6 @@ public class Word2VecUtility {
 	public HashMap<String, float[]> vectors = new HashMap<>();
 
 	public void getVectors(int numsearch) {
-		//TODO: Record runtime and word position here. Have a "verbose" default variable.
 		try {
 			BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
 			bufferedInput.skip(12);
@@ -34,15 +29,18 @@ public class Word2VecUtility {
 			}
 			bufferedInput.close();
 		} catch (IOException e) {
-			System.out.println("There was an error opening the bufered input stream to read vectors: " + e);
-			System.out.print("Anything else you try to do with Word2Vec will probably fail lmao!");
-			System.out.println(" So make sure the file referenced in the getVectors method of Word2VecUtility is correct. Bye!");
+			System.out.println("Error opening the buffered input stream to read vectors: " + e);
+			System.out.println("So make sure the file referenced in the getVectors method of Word2VecUtility is correct. Bye!");
 			return;
 		}
 	}
 
 	public float[] getVec(String word){return vectors.get(word);} //Maybe do this ignoring case?
 
+	/**
+	 * Following three methods are overloads of wordsCloseTo().
+	 * All find the closest words to the target word or vector.
+	 */
 	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) {
 		return wordsCloseTo(targetWord, numResults, new String[0]);
 	}
@@ -58,36 +56,43 @@ public class Word2VecUtility {
 		return wordsCloseTo(targetVec, numResults, new String[0]);
 	}
 	
+	/**
+	 * Searches our dictionary to find the closest words to the target vector, measured by cosine similarity.
+	 * @param targetVec Target, as a 300-component vector
+	 * @param numResults Number of results to return
+	 * @param excluded All words to be excluded from search
+	 * @return Sorted ArrayList of most similar words, with cosine similarity as scores.
+	 */
 	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults, String[] excluded) {
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
-		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
-
-		Iterator it = vectors.entrySet().iterator();
+		for(int i=0; i<numResults; i++) {
+			results.add(new WordScore("", -1.0f));
+		}
 		
-		outerLoop:
-		while(it.hasNext()){
-			Map.Entry<String, float[]> pair = (Map.Entry)it.next();
-
-			String nextWord = pair.getKey();
-			float[] nextVec = pair.getValue();
-
-			float cosSimilarity = cosineSimilarity(nextVec, targetVec);
-
-			if(cosSimilarity<results.get(numResults-1).score){continue outerLoop;}
-			for(String ex: excluded) { //Screen out excluded words
-				if(isSubstring(nextWord, ex)) { continue outerLoop; }
+		for(String word : vectors.keySet()) {
+			float[] vec = vectors.get(word);
+			float cosSimilarity = cosineSimilarity(vec, targetVec);
+			
+			if(cosSimilarity<results.get(numResults-1).score || isExcluded(word, excluded)) {
+				continue; //Screen out low-similarity and excluded words
 			}
-
-			WordScore next = new WordScore(nextWord, cosSimilarity);
-			int position = Collections.binarySearch(results, next, new Comparator<WordScore>() {
-				@Override
-				public int compare(WordScore o1, WordScore o2) {
-					return -Float.compare(o1.score, o2.score);}});
-
-			results.add(position < 0 ? -position - 1 : position, next);
+			
+			WordScore wordSim = new WordScore(word, cosSimilarity);
+			results.add(wordSim);
+			Collections.sort(results);
+			Collections.reverse(results);
 			results.remove(numResults);
 		}
 		return results;
+	}
+	
+	private static boolean isExcluded(String word, String[] excluded) {
+		for(String ex: excluded) { //Screen out excluded words
+			if(isSubstring(word, ex)) { 
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public static boolean isSubstring(String clue, String word) {
@@ -97,9 +102,11 @@ public class Word2VecUtility {
     }
 
 	//Find closest word to targetVec which is in set
-	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults)  {
+	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, String[] set, int numResults)  {		
 		ArrayList<WordScore> results = new ArrayList<WordScore>(numResults);
-		for(int i=0; i<numResults; i++) {results.add(new WordScore("", -1.0f));}
+		for(int i=0; i<numResults; i++) {
+			results.add(new WordScore("", -1.0f));
+		}
 
 		for(String s : set){
 			float[] nextVec = vectors.get(s);
@@ -199,15 +206,22 @@ public class Word2VecUtility {
 }
 
 
-class WordScore {
+class WordScore implements Comparable<WordScore> {
 	//A helper class which stores a word and associated "score"
 	public String word;
 	public float score;
+	
 	public WordScore(String word, float score) {
 		this.word = word;
 		this.score = score;
 	}
+	
 	public String toString() {
 		return "\"" + word + "\": " + score;
+	}
+	
+	@Override
+	public int compareTo(WordScore other) {
+		return Float.compare(this.score, other.score);
 	}
 }
