@@ -9,7 +9,6 @@ import java.util.*;
 2. To calibrate that progress bar, scroll through the whole file and print every 5,000th word. Print time as well.
 3. Find some way to consolidate all the buffered input lines
 5. Require users to populate vectors HashMap up front by making it part of the constructor
-6. Make methods fail more gracefully if the given word isn't in the dictionary
  */
 
 public class Word2VecUtility {
