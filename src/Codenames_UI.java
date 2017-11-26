@@ -1,3 +1,11 @@
+/**
+ * Created by dawsonbyrd on 7/20/17.
+ * 
+ * This class runs the Codenames board game on a JFrame interface. It provides a computer
+ * spymaster to give clues, and allows the user to play solo with the computer. The spymaster
+ * is powered by vectors from Word2Vec trained on the Google News corpus.
+ */
+
 import org.json.*;
 import java.io.*;
 import java.net.URL;
@@ -9,15 +17,7 @@ import java.util.Scanner;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-
 import static java.lang.Math.exp;
-
-/**
- * Created by dawsonbyrd on 7/20/17.
- * 
- * This class runs the Codenames board game on a JFrame interface. Provides a computer
- * spymaster to give clues. Allows the user to play solo with the computer.
- */
 
 //9 one color, 8 another, 1 assassin, 7 bystanders
 
@@ -483,8 +483,7 @@ public class Codenames_UI{
         return 1.0f / (float) (1 + exp(-arg));
     }
 
-    /** Returns ArrayList of best hints for current board. 
-     *  Position i stores the best hint for subsets of size i. */
+    /** Returns ArrayList of best hints for current board. Position i stores the best hint for subsets of size i. */
     private ArrayList<Hint> findBestHints() throws IOException {
         ArrayList<Hint> bestHints = new ArrayList<>(ourWords.size());
         
@@ -501,7 +500,35 @@ public class Codenames_UI{
         }
         return bestHints;
     }
-
+    
+    private ArrayList<int[]> allIndexSubsetsOfSize(int size) {
+    		ArrayList<int[]> allSubsets = new ArrayList<int[]>();
+    		int[] indices = new int[size];
+    		allIndexSubsetsHelper(indices, size, allSubsets);
+    		return allSubsets;
+    }
+    
+    /** Helper function to generate all subsets of the indices of ourWords.
+     * @param currIndices The current, possibly partial, subset
+     * @param numChoicesLeft The number of indices we still need to add to the subset
+     * @param allSubsets The final ArrayList of subsets which we add to
+     */
+    private void allIndexSubsetsHelper(int[] currIndices, int numChoicesLeft, ArrayList<int[]> allSubsets) {
+    		if (numChoicesLeft == 0) { //Base case: subset full
+    			allSubsets.add(currIndices.clone());
+    		} else { //Recursive case: Pick remaining elements, starting from our previous pick
+	    		int prevChoice = 0;
+	    		if (numChoicesLeft != currIndices.length) {
+	    			prevChoice = currIndices[currIndices.length - numChoicesLeft - 1];
+	    		}
+	    		for (int j = prevChoice + 1; j < ourWords.size(); j++) {
+	    			currIndices[currIndices.length - numChoicesLeft] = j;
+	    			allIndexSubsetsHelper(currIndices, numChoicesLeft - 1, allSubsets);
+	    			currIndices[currIndices.length - numChoicesLeft] = 0;
+	        }
+    		}
+    }
+    
     //Updates maximums to store the best hint for the the subset size of currIndicesSubset size.
     private void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums, ArrayList<String> excluded)
             throws IOException {
