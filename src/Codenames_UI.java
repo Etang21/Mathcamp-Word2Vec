@@ -48,8 +48,8 @@ public class Codenames_UI{
 
     public static Word2VecUtility util = new Word2VecUtility();
 
-    ArrayList<String> words = new ArrayList<>();
-    ArrayList<String> opp = new ArrayList<>();
+    ArrayList<String> ourWords = new ArrayList<>();
+    ArrayList<String> oppWords = new ArrayList<>();
     ArrayList<String> bystanders = new ArrayList<>();
     String assassin;
 
@@ -202,14 +202,10 @@ public class Codenames_UI{
             System.out.println(ts.it%ts.n+1 + "/"+ts.n);
             System.out.println(game_set.SEARCH_CUTOFF + "," + game_set.MIN_PROB);
 
-//            FileWriter fw = new FileWriter("threshold_data.txt", true);
-//            BufferedWriter bw = new BufferedWriter(fw);
-//            PrintWriter out = new PrintWriter(bw);
-
             util.getVectors(game_set.DATABASE_SIZE);
 
-            words.clear();
-            opp.clear();
+            ourWords.clear();
+            oppWords.clear();
             bystanders.clear();
             assassin = "";
 
@@ -228,11 +224,11 @@ public class Codenames_UI{
                 System.out.println(card_set.get(5 * j + 4));
             }
 
-            num_subsets = new int[words.size() + 1];
+            num_subsets = new int[ourWords.size() + 1];
             for (int k = 0; k < num_subsets.length; k++) {
                 int result = 1;
                 for (int i = 0; i < k; i++) {
-                    result *= (words.size() - i);
+                    result *= (ourWords.size() - i);
                 }
                 for (int i = 1; i <= k; i++) {
                     result /= i;
@@ -244,31 +240,15 @@ public class Codenames_UI{
             Scanner in = new Scanner(System.in);
             int shift = (maximums.size() > 1) ? 2 : 1;
             Hint final_hint = maximums.get(maximums.size() - shift);
-            System.out.println("hint: " + final_hint.word + "," + final_hint.s.length);
+            System.out.println("hint: " + final_hint.word + "," + final_hint.targetIndices.length);
 
-//            for (int j = 0; j < final_hint.s.length; j++) {
-//                System.out.print("pick " + j + ":");
-//                String pick = in.nextLine();
-//                if (!words.contains(pick)) {
-//                    System.out.println("incorrect!");
-//                    //score[(it%40)/20]+=(j-1);
-//                    //out.print((j) + "" + 0 + ",");
-//                    break;
-//                }
-//                if (j == final_hint.s.length - 1) {
-//                    System.out.println("correct!");
-//                    //score[(it%40)/20]+=(final_hint.s.length);
-//                    //out.print(final_hint.s.length + "" + 1 + ",");
-//                }
-//            }
-
-            String[] intended = new String[final_hint.s.length];
+            String[] intended = new String[final_hint.targetIndices.length];
             for (int j = 0; j < intended.length; j++) {
-                intended[j] = words.get(final_hint.s[j]);
+                intended[j] = ourWords.get(final_hint.targetIndices[j]);
             }
             System.out.println("intended cards: " + Arrays.toString(intended));
-            System.out.println("ours: " + words);
-            System.out.println("opp: " + opp);
+            System.out.println("ours: " + ourWords);
+            System.out.println("opp: " + oppWords);
 
             System.out.print("score increase:"); int inc = Integer.parseInt(in.nextLine());
 
@@ -300,11 +280,11 @@ public class Codenames_UI{
                 loadInitialUI();
             }
 
-            num_subsets = new int[words.size() + 1];
+            num_subsets = new int[ourWords.size() + 1];
             for (int k = 0; k < num_subsets.length; k++) {
                 int result = 1;
                 for (int i = 0; i < k; i++) {
-                    result *= (words.size() - i);
+                    result *= (ourWords.size() - i);
                 }
                 for (int i = 1; i <= k; i++) {
                     result /= i;
@@ -318,18 +298,18 @@ public class Codenames_UI{
             Hint final_hint = maximums.get(maximums.size() - shift);
 
             //Store intended words:
-            String[] intended = new String[final_hint.s.length];
-            for (int i = 0; i < final_hint.s.length; i++) {
-                intended[i] = words.get(final_hint.s[i]);
+            String[] intended = new String[final_hint.targetIndices.length];
+            for (int i = 0; i < final_hint.targetIndices.length; i++) {
+                intended[i] = ourWords.get(final_hint.targetIndices[i]);
             }
             
             //Print clue:
             clues.add(final_hint.word);
             hint.setText("<html><div style='text-align: center;'> <b>hint: </b>" + final_hint.word + "," + final_hint
-                    .s.length + "</div></html>");
+                    .targetIndices.length + "</div></html>");
 
             //User chooses cards:
-            for (int j = 0; j < final_hint.s.length; j++) {
+            for (int j = 0; j < final_hint.targetIndices.length; j++) {
                 String pick="";
                 choosing = true;
                 while(choosing){
@@ -342,16 +322,16 @@ public class Codenames_UI{
                         }
                     }
                 }
-                if (!words.contains(pick)) {
+                if (!ourWords.contains(pick)) {
                     System.out.println("incorrect!");
                     if(pick.equals(assassin))assassin="";
 
                     bystanders.remove(pick);
-                    opp.remove(pick);
+                    oppWords.remove(pick);
                     break;
                 }
-                words.remove(pick);
-                if (j == final_hint.s.length - 1) {
+                ourWords.remove(pick);
+                if (j == final_hint.targetIndices.length - 1) {
                     System.out.println("correct!");
                 }
                 score++;
@@ -364,8 +344,8 @@ public class Codenames_UI{
     
     private void loadInitialUI() throws IOException {
         cards.clear();
-        words.clear();
-        opp.clear();
+        ourWords.clear();
+        oppWords.clear();
         bystanders.clear();
         assassin = "";
 
@@ -377,8 +357,8 @@ public class Codenames_UI{
         board.revalidate();
         board.repaint();
 
-        for(String s : words) cards.add(new Card(s, "ours"));
-        for(String s : opp) cards.add(new Card(s, "opp"));
+        for(String s : ourWords) cards.add(new Card(s, "ours"));
+        for(String s : oppWords) cards.add(new Card(s, "opp"));
         for(String s : bystanders) cards.add(new Card(s, "by"));
         cards.add(new Card(assassin, "assn"));
 
@@ -421,12 +401,12 @@ public class Codenames_UI{
             int num_words = Integer.parseInt(boardInput.nextLine());
 	        for(int k=0; k<num_words; k++){
 	            String curr = boardInput.next();
-	            words.add(curr);}
+	            ourWords.add(curr);}
 
 	        int num_opp = Integer.parseInt(boardInput.next());
 	        for(int k=0; k<num_opp; k++){
 	            String curr = boardInput.next();
-	            opp.add(curr);}
+	            oppWords.add(curr);}
 
 	        int num_by = Integer.parseInt(boardInput.next());
 	        for(int k=0; k<num_by; k++){bystanders.add(boardInput.next());}
@@ -463,7 +443,7 @@ public class Codenames_UI{
         System.out.println("\rgenerating game board...");
         int n = 0;
         while (n < data.length) {
-            if (opp.size() == 17-word_size && words.size() == word_size && bystanders.size()==7 && !assassin.equals(""))
+            if (oppWords.size() == 17-word_size && ourWords.size() == word_size && bystanders.size()==7 && !assassin.equals(""))
                 break;
 
             double rand = Math.random();
@@ -471,9 +451,9 @@ public class Codenames_UI{
                 if (util.getVec(data[n]) == null) continue;
                 if (data[n].length() < 3) continue;
                 if (rand < 0.025) {
-                    if (words.size() < word_size) words.add(data[n]);
+                    if (ourWords.size() < word_size) ourWords.add(data[n]);
                 } else if (rand<0.05){
-                    if(opp.size() < 17-word_size) opp.add(data[n]);
+                    if(oppWords.size() < 17-word_size) oppWords.add(data[n]);
                 } else if(rand<0.075) if(bystanders.size()<7) bystanders.add(data[n]);
 
                 else if(assassin.equals(""))assassin = data[n];
@@ -481,15 +461,15 @@ public class Codenames_UI{
 
             if (n == data.length - 1) {
                 n = 0;
-                opp.clear();
-                words.clear();
+                oppWords.clear();
+                ourWords.clear();
                 bystanders.clear();
                 assassin="";
             } else n++;
         }
         ArrayList<String> card_set = new ArrayList<String>();
-        card_set.addAll(words);
-        card_set.addAll(opp);
+        card_set.addAll(ourWords);
+        card_set.addAll(oppWords);
         card_set.addAll(bystanders);
         card_set.add(assassin);
         Collections.shuffle(card_set);
@@ -506,10 +486,10 @@ public class Codenames_UI{
 
     //Returns ArrayList of best hints, where position i stores the best hint for subsets of size i.
     private ArrayList<Hint> findBestHints() throws IOException {
-        ArrayList<Hint> bestHints = new ArrayList<>(words.size());
+        ArrayList<Hint> bestHints = new ArrayList<>(ourWords.size());
         
         //Loop through all possible sizes (k) of subsets:
-        for (int k=1; k<=words.size(); k++) {
+        for (int k=1; k<=ourWords.size(); k++) {
             count = 0;
             bestHints.add(new Hint(0, "", new int[]{0}));
             
@@ -529,13 +509,13 @@ public class Codenames_UI{
         	//Gets a list of all target words to guess:
         	ArrayList<String> targetWords = new ArrayList<String>();
         	for(int index: currIndicesSubset) {
-        		targetWords.add(words.get(index));
+        		targetWords.add(ourWords.get(index));
         	}
 
             //Creates an array of the words which we must exclude from our search for hints
-            ArrayList<String> excluded = new ArrayList<String>(words);
-            excluded.addAll(opp);
-            excluded.addAll(words);
+            ArrayList<String> excluded = new ArrayList<String>(ourWords);
+            excluded.addAll(oppWords);
+            excluded.addAll(ourWords);
             excluded.addAll(bystanders);
             excluded.addAll(clues);
 
@@ -553,7 +533,7 @@ public class Codenames_UI{
 
         } else {
         	//If we're here, our "subset" doesn't have enough elements yet, so we add more.
-            for (int j = nextIndex; j<words.size(); j++) {
+            for (int j = nextIndex; j<ourWords.size(); j++) {
 
                 boolean contains = false;
 
@@ -566,29 +546,37 @@ public class Codenames_UI{
         }
     }
     
-    // Returns the best hint to clue for all words in targetWords, excluding substrings/superstrings of excluded.
+    /** Returns the best hint to clue for all words in targetWords, excluding substrings/superstrings of excluded.*/
     private Hint best_hint_for(ArrayList<String> targetWords, ArrayList<String> excluded) {
     	
         //Finds our candidate hints: the words closest to the sum/average of our target words:
         float[] avgVec = averageVectorFor(targetWords);
-        ArrayList<WordScore> candidates = util.wordsCloseTo(avgVec, game_set.NUM_CANDIDATES, excluded.toArray(new String[excluded.size()]));
+        ArrayList<WordScore> candidates = 
+        		util.wordsCloseTo(avgVec, game_set.NUM_CANDIDATES, excluded.toArray(new String[excluded.size()]));
 
+        //For all candidates, evaluate distance to target words and opponent words. Update bestHint if best.
         Hint bestHint = new Hint(-1, "", null);
         for (int i = 0; i < game_set.NUM_CANDIDATES; i++) {
-            //For all candidates, evaluate distance to target words and opponent words. Update bestHint if best.
             String curr_word = candidates.get(i).word;
             float[] hint = util.vectors.get(curr_word);
             float hintProb = hintProbability(hint, targetWords, game_set);
 
             if (hintProb > bestHint.prob && isSafeHint(hint, game_set)) {
-                int[] indices = new int[targetWords.size()];
-                for (int j = 0; j < targetWords.size(); j++) {
-                    indices[j] = words.indexOf(targetWords.get(j));
-                }
+                int[] indices = indicesOfTargets(targetWords);
                 bestHint = new Hint(hintProb, curr_word, indices);
             }
         }
         return bestHint;
+    }
+    
+    /** Returns an array containing the indices in words of our ArrayList of target words
+     * 	Precondition: words contains all words in targetWords */
+    private int[] indicesOfTargets(ArrayList<String> targetWords) {
+    		int[] indices = new int[targetWords.size()];
+        for (int j = 0; j < targetWords.size(); j++) {
+            indices[j] = ourWords.indexOf(targetWords.get(j));
+        }
+        return indices;
     }
     
     /** Returns component-wise average of all vectors for words in targetWords */
@@ -610,7 +598,7 @@ public class Codenames_UI{
     /** Returns true if our hint is a safe distance away from opponents, bystanders, and assassin.
      *  Thresholds for safety are defined in the GameSettings we pass in. */
     private boolean isSafeHint(float[] hint, GameSettings game_set) {
-        for (String s : opp) {
+        for (String s : oppWords) {
             if (prob(util.cosineSimilarity(hint, util.getVec(s))) > game_set.OPPONENT_THRESHOLD) {
             		return false;
             }
@@ -684,16 +672,16 @@ public class Codenames_UI{
 class Hint{
     float prob;
     String word;
-    int[] s;
+    int[] targetIndices;
 
     public Hint(float prob, String word, int[] k){
         this.prob = prob;
         this.word = word;
-        this.s = k;
+        this.targetIndices = k;
     }
 
     public String toString() {
-        return "\"" + word + "\":" + prob + ":" + Arrays.toString(s);
+        return "\"" + word + "\":" + prob + ":" + Arrays.toString(targetIndices);
     }
 }
 
