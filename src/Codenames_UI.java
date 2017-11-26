@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Scanner;
-
+import java.util.stream.IntStream;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -506,40 +506,43 @@ public class Codenames_UI{
     //Updates maximums to store the best hint for the the subset size of currIndicesSubset size.
     private void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums, ArrayList<String> excluded)
             throws IOException {
-        if (currSubsetSize == currIndicesSubset.length) { //If our subset array contains subsetSize (target) # words
-	        	//Gets a list of all target words to guess:
-	        	ArrayList<String> targetWords = new ArrayList<String>();
-	        	for(int index: currIndicesSubset) {
-	        		targetWords.add(ourWords.get(index));
-	        	}
-
-            Hint bestHint = best_hint_for(targetWords, excluded);
+        if (currSubsetSize == currIndicesSubset.length) { 
+        		//Our subset array contains the correct number of target words
+            Hint bestHint = bestHintforIndices(currIndicesSubset, excluded);
             if(bestHint.prob > maximums.get(currIndicesSubset.length-1).prob) {
             		maximums.set(currIndicesSubset.length-1, bestHint);
             }
             
             //Update progress bar:
             count++;
-            hint.setText("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize])
-                    +"%");
+            hint.setText("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize]) + "%");
 
         } else {
-        	//If we're here, our "subset" doesn't have enough elements yet, so we add more.
+        		//If we're here, our "subset" doesn't have enough elements yet, so we add more.
+        		//First element we could add is the one right after nextIndex
             for (int j = nextIndex; j<ourWords.size(); j++) {
-
-                boolean contains = false;
-
-                for(int i=0; i<currSubsetSize; i++){if(currIndicesSubset[i]==j) contains=true;}
-                if(contains) continue;
-
+            		if (arrayContains(currIndicesSubset, j)) {
+            			continue;
+            		}
                 currIndicesSubset[currSubsetSize] = j;
                 checkSubsets(currIndicesSubset, currSubsetSize + 1, j + 1, maximums, excluded);
             }
         }
     }
     
+    /** Returns the best hint to clue for all words in ourWords at the targetIndices.
+     *  Excludes substrings/superstrings of excluded.*/
+    private Hint bestHintforIndices(int[] targetIndices, ArrayList<String> excluded) {
+	    	ArrayList<String> targetWords = new ArrayList<String>();
+	    	for(int index: targetIndices) {
+	    		targetWords.add(ourWords.get(index));
+	    	}
+	    	return bestHintForWords(targetWords, excluded);
+    }
+    
+    
     /** Returns the best hint to clue for all words in targetWords, excluding substrings/superstrings of excluded.*/
-    private Hint best_hint_for(ArrayList<String> targetWords, ArrayList<String> excluded) {
+    private Hint bestHintForWords(ArrayList<String> targetWords, ArrayList<String> excluded) {
     	
         //Finds our candidate hints: the words closest to the sum/average of our target words:
         float[] avgVec = averageVectorFor(targetWords);
@@ -627,6 +630,16 @@ public class Codenames_UI{
             prob *= curr_prob;
         }
     		return prob;
+    }
+
+    /** Just checks if the array contains the query. */
+    private boolean arrayContains(int[] arr, int query) {
+    		for (int element : arr) {
+    			if (element == query) {
+    				return true;
+    			}
+    		}
+    		return false;
     }
     
     class Card extends JButton{
