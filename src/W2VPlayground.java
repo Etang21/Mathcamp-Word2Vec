@@ -67,7 +67,7 @@ public class W2VPlayground {
 		}
 	}
 	
-	//Solves the analogy A is to B as C is to D.
+	/** Solves analogies, A is to B as C is to D. */
 	public static ArrayList<WordScore> solveAnalogy(String A, String B, String C, Word2VecUtility util) throws WordNotFoundException {
 		//If A:B = C:D, then B - A + C ~= D.
 		float[] aVec = util.getVec(A);

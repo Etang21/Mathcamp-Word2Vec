@@ -15,6 +15,9 @@ public class Word2VecUtility {
 
 	public HashMap<String, float[]> vectors = new HashMap<>();
 
+	/** Loads words and vectors from the Google News corpus into our HashMap.
+	 * @param numsearch Number of word-vector pairs to load.
+	 */
 	public void getVectors(int numsearch) {
 		try {
 			BufferedInputStream bufferedInput = new BufferedInputStream(new FileInputStream("GoogleNews-vectors-negative300.bin"));
@@ -165,6 +168,7 @@ public class Word2VecUtility {
 		return (float) (dotProd/(Math.sqrt(norm1)*Math.sqrt(norm2)));
 	}
 
+	/** Reads word from binary Word2Vec data file */
 	private String readWord(BufferedInputStream bufferedInput) throws IOException {
 		//Could optimize this by checking if a byte is a space character directly, instead of casting?
 		//Could optimize this by reading individual bytes instead of arrays
@@ -179,6 +183,7 @@ public class Word2VecUtility {
 		return word;
 	}
 
+	/** Reads vector from binary Word2Vec data file */
 	private float[] readVector(BufferedInputStream bufferedInput) throws IOException {
 		byte[] vectorBytes = new byte[1200];
 		bufferedInput.read(vectorBytes);
@@ -191,25 +196,23 @@ public class Word2VecUtility {
 		return vector;
 	}
 
+	/** Adds vectors with scaling factor
+	 * @param scale Constant to scale vector b by.
+	 */
 	public float[] addVec(float[] a, float[] b, int scale){
 		float[] result = new float[300];
 		for(int i=0; i<300; i++){result[i] = a[i]+scale*b[i];}
 		return result;
 	}
-
-	public float l2norm(float[] a, float[] b){
-		double sum=0;
-		if(a.length!=b.length) throw new IllegalArgumentException("vectors must be of the same length");
-		for(int i=0; i<a.length; i++){sum+=(a[i]-b[i])*(a[i]-b[i]);}
-		return (float)Math.sqrt(sum);
-	}
 	
+	/** Returns Euclidean distance between endpoints of two vectors. */
 	public float euclideanDistanceUnnormalized(float[] a, float[] b){
 		double sum=0;
 		for(int i=0; i<a.length; i++){sum+=(a[i]-b[i])*(a[i]-b[i]);}
 		return (float)Math.sqrt(sum);
 	}
 	
+	/** Prints Euclidean distance between two vectors. */
 	public float printEuclideanDistance(String word1, String word2) {
 		float[] firstVec = getVec(word1);
 		float[] secondVec = getVec(word2);
