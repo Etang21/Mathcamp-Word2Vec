@@ -390,7 +390,6 @@ public class Codenames_UI{
         });
     }
 
-
     /**Scans board from fileName, populates our ArrayLists with word data */
     private void loadBoardFromFile(String fileName) {
     	try {
@@ -419,7 +418,7 @@ public class Codenames_UI{
     	}
     }
 
-    /** Scans board from online list of randome Codenames words, populates our ArrayLists with words. */
+    /** Scans board from online list of random Codenames words, populates our ArrayLists with words. */
     private ArrayList<String> loadBoardFromOnline() throws IOException {
     		URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
         URLConnection con = url.openConnection();
@@ -484,23 +483,40 @@ public class Codenames_UI{
     }
 
     /** Returns ArrayList of best hints for current board. Position i stores the best hint for subsets of size i. */
-    private ArrayList<Hint> findBestHints() throws IOException {
+    private ArrayList<Hint> findBestHints() {
         ArrayList<Hint> bestHints = new ArrayList<>(ourWords.size());
+        ArrayList<String> excluded = excludedWords();
         
-        //Loop through all possible sizes (k) of subsets:
+        //Loop through all possible sizes of subsets
         for (int k=1; k<=ourWords.size(); k++) {
             count = 0;
-            bestHints.add(new Hint(0, "", new int[]{0}));
-            
-            int[] subset = new int[k];
-            ArrayList<String> excluded = excludedWords();
-            checkSubsets(subset, 0, 0, bestHints, excluded); //Updates bestHints inside method.
-            if (bestHints.get(k - 1).prob < Math.pow(game_set.SEARCH_CUTOFF,k))
-            	return bestHints;
+            bestHints.add(bestHintForNumWords(k, excluded));
+            if (bestHints.get(k - 1).prob < Math.pow(game_set.SEARCH_CUTOFF,k)) {
+            		return bestHints; //Cut off search if too improbable
+            }
         }
         return bestHints;
     }
     
+    /** Returns the best hint that clues for numWords number of words in ourWords. Excludes words in excluded.
+     * Also updates progress bar in the UI. */
+    private Hint bestHintForNumWords(int numWords, ArrayList<String> excluded) {
+    		ArrayList<int[]> indexSubsets = allIndexSubsetsOfSize(numWords);
+    		Hint bestHint = new Hint(0, "", new int[]{0});
+    		for (int[] indices : indexSubsets) {
+    			Hint candidateHint = bestHintForIndices(indices, excluded);
+    			if (candidateHint.prob > bestHint.prob) {
+    				bestHint = candidateHint;
+    			}
+    			
+    			//Update progress bar:
+            count++;
+            hint.setText("\r"+"k="+ numWords +":"+(int)Math.ceil(100*(float)count/num_subsets[numWords]) + "%");
+    		}
+    		return bestHint;
+    }
+    
+    /** Returns ArrayList of subsets of indices into ourWords, representing all subsets of ourWords of the given size. */
     private ArrayList<int[]> allIndexSubsetsOfSize(int size) {
     		ArrayList<int[]> allSubsets = new ArrayList<int[]>();
     		int[] indices = new int[size];
@@ -528,37 +544,10 @@ public class Codenames_UI{
 	        }
     		}
     }
-    
-    //Updates maximums to store the best hint for the the subset size of currIndicesSubset size.
-    private void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums, ArrayList<String> excluded)
-            throws IOException {
-        if (currSubsetSize == currIndicesSubset.length) { 
-        		//Our subset array contains the correct number of target words
-            Hint bestHint = bestHintforIndices(currIndicesSubset, excluded);
-            if(bestHint.prob > maximums.get(currIndicesSubset.length-1).prob) {
-            		maximums.set(currIndicesSubset.length-1, bestHint);
-            }
-            
-            //Update progress bar:
-            count++;
-            hint.setText("\r"+"k="+currIndicesSubset.length+":"+(int)Math.ceil(100*(float)count/num_subsets[currSubsetSize]) + "%");
-
-        } else {
-        		//If we're here, our "subset" doesn't have enough elements yet, so we add more.
-        		//First element we could add is the one right after nextIndex
-            for (int j = nextIndex; j<ourWords.size(); j++) {
-            		if (arrayContains(currIndicesSubset, j)) {
-            			continue;
-            		}
-                currIndicesSubset[currSubsetSize] = j;
-                checkSubsets(currIndicesSubset, currSubsetSize + 1, j + 1, maximums, excluded);
-            }
-        }
-    }
-    
+   
     /** Returns the best hint to clue for all words in ourWords at the targetIndices.
      *  Excludes substrings/superstrings of excluded.*/
-    private Hint bestHintforIndices(int[] targetIndices, ArrayList<String> excluded) {
+    private Hint bestHintForIndices(int[] targetIndices, ArrayList<String> excluded) {
 	    	ArrayList<String> targetWords = new ArrayList<String>();
 	    	for(int index: targetIndices) {
 	    		targetWords.add(ourWords.get(index));
