@@ -19,7 +19,6 @@ import java.awt.event.*;
 import javax.swing.*;
 import static java.lang.Math.exp;
 
-//9 one color, 8 another, 1 assassin, 7 bystanders
 
 public class Codenames_UI{
 
@@ -47,6 +46,8 @@ public class Codenames_UI{
 
     public static Word2VecUtility util = new Word2VecUtility();
 
+
+    //9 one color, 8 another, 1 assassin, 7 bystanders
     ArrayList<String> ourWords = new ArrayList<>();
     ArrayList<String> oppWords = new ArrayList<>();
     ArrayList<String> bystanders = new ArrayList<>();
@@ -100,6 +101,7 @@ public class Codenames_UI{
         mainFrame.setVisible(true);
     }
 
+    /** Run main menu with all menu options. */
     private void start(){
         headerLabel.setText("Codenames AI");
 
@@ -160,114 +162,7 @@ public class Codenames_UI{
         mainFrame.setVisible(true);
     }
 
-    private void train() throws IOException{
-
-        int[] search_para = new int[]{100000,10};
-        TrainState ts = new TrainState("training_settings.txt");
-
-        game_set = new GameSettings(ts.curr_settings, search_para, false);
-
-        util.getVectors(game_set.DATABASE_SIZE);
-
-        while(true){
-            int param = (ts.it%(10*ts.n))/(2*ts.n);
-
-            if(ts.it%(2*ts.n)==0 && ts.it>0){
-                ts.curr_settings[param-1]-= ts.adjustments[param];
-
-                ts.gradient[(ts.it%(10*ts.n))/(2*ts.n)-1] = 0.05f*(ts.score[1]-ts.score[0])/ts.adjustments[(ts
-                        .it%(10*ts.n))/(2*ts.n)-1];
-                System.out.println("current parameter:"+(ts.it%(10*ts.n))/(2*ts.n));
-                System.out.println(Arrays.toString(ts.gradient));
-
-                ts.score[0]=0; ts.score[1]=0;
-            }
-
-            if(ts.it%(10*ts.n)==0){
-                for(int i=0; i<5;i++){ts.curr_settings[i]+=ts.alpha*ts.gradient[i];}
-                System.out.println(Arrays.toString(ts.curr_settings));
-            }
-
-            if(ts.it%ts.n==0){
-
-                if((ts.it%(2*ts.n))/(ts.n)==1){ts.curr_settings[param] += 2*ts.adjustments[param];}
-                else{ts.curr_settings[param] -= ts.adjustments[param];}
-
-                System.out.println("current settings:"+Arrays.toString(ts.curr_settings));
-
-                game_set = new GameSettings(ts.curr_settings,search_para, false);
-            }
-
-            System.out.println(ts.it%ts.n+1 + "/"+ts.n);
-            System.out.println(game_set.SEARCH_CUTOFF + "," + game_set.MIN_PROB);
-
-            util.getVectors(game_set.DATABASE_SIZE);
-
-            ourWords.clear();
-            oppWords.clear();
-            bystanders.clear();
-            assassin = "";
-
-            System.out.println("GA");
-
-            ArrayList<String> card_set = new ArrayList<>();
-
-            if (game_set.PLAY_BOARD_FROM_FILE) {
-                loadBoardFromFile("board.txt");
-            } else {card_set=loadBoardFromOnline();}
-
-            for (int j = 0; j < 5; j++) {
-                for (int x = 0; x < 4; x++) {
-                    System.out.print(card_set.get(5 * j + x) + " ");
-                }
-                System.out.println(card_set.get(5 * j + 4));
-            }
-
-            num_subsets = new int[ourWords.size() + 1];
-            for (int k = 0; k < num_subsets.length; k++) {
-                int result = 1;
-                for (int i = 0; i < k; i++) {
-                    result *= (ourWords.size() - i);
-                }
-                for (int i = 1; i <= k; i++) {
-                    result /= i;
-                }
-                num_subsets[k] = result;
-            }
-            ArrayList<Hint> maximums = findBestHints();
-            System.out.println();
-            Scanner in = new Scanner(System.in);
-            int shift = (maximums.size() > 1) ? 2 : 1;
-            Hint final_hint = maximums.get(maximums.size() - shift);
-            System.out.println("hint: " + final_hint.word + "," + final_hint.targetIndices.length);
-
-            String[] intended = new String[final_hint.targetIndices.length];
-            for (int j = 0; j < intended.length; j++) {
-                intended[j] = ourWords.get(final_hint.targetIndices[j]);
-            }
-            System.out.println("intended cards: " + Arrays.toString(intended));
-            System.out.println("ours: " + ourWords);
-            System.out.println("opp: " + oppWords);
-
-            System.out.print("score increase:"); int inc = Integer.parseInt(in.nextLine());
-
-            if(inc!=-2) {
-                ts.score[(ts.it % (2 * ts.n)) / ts.n] += inc;
-                System.out.println(ts.score[(ts.it % (2 * ts.n)) / ts.n] / (ts.it % ts.n + 1));
-                ts.it++;
-            }
-
-            System.out.print("quit? ");
-            if (!in.nextLine().equals("")){
-                ts.save_settings("training_settings.txt");
-                break;
-            }
-
-            System.out.println();
-            in.close();
-        }
-    }
-
+    /** Start the Codenames game with computer spymaster. */
     private void game() throws IOException{
     		game_set = loadGameSettings();
         util.getVectors(game_set.DATABASE_SIZE);
@@ -369,6 +264,7 @@ public class Codenames_UI{
         mainFrame.repaint();
     }
 
+    /** Loads game settings from file data. */
     private GameSettings loadGameSettings() throws IOException {
     		int[] search_para = new int[]{100000,10};
         File file = new File("game_settings.txt");
@@ -555,11 +451,9 @@ public class Codenames_UI{
 	    	return bestHintForWords(targetWords, excluded);
     }
     
-    
     /** Returns the best hint to clue for all words in targetWords, excluding substrings/superstrings of excluded.*/
     private Hint bestHintForWords(ArrayList<String> targetWords, ArrayList<String> excluded) {
-    	
-        //Finds our candidate hints: the words closest to the sum/average of our target words:
+        //Finds our candidate hints: the words closest to the sum/average of our target words. Empirically works best.
         float[] avgVec = averageVectorFor(targetWords);
         ArrayList<WordScore> candidates = 
         		util.wordsCloseTo(avgVec, game_set.NUM_CANDIDATES, excluded.toArray(new String[excluded.size()]));
@@ -647,18 +541,121 @@ public class Codenames_UI{
     		return prob;
     }
     
-    /** Just checks if the array contains the query. */
-    private boolean arrayContains(int[] arr, int query) {
-    		for (int element : arr) {
-    			if (element == query) {
-    				return true;
-    			}
-    		}
-    		return false;
+    /** Used to train our Codenames spymaster to improve over time. Incomplete/broken feature. */
+    private void train() throws IOException{
+
+        int[] search_para = new int[]{100000,10};
+        TrainState ts = new TrainState("training_settings.txt");
+
+        game_set = new GameSettings(ts.curr_settings, search_para, false);
+
+        util.getVectors(game_set.DATABASE_SIZE);
+
+        while(true){
+            int param = (ts.it%(10*ts.n))/(2*ts.n);
+
+            if(ts.it%(2*ts.n)==0 && ts.it>0){
+                ts.curr_settings[param-1]-= ts.adjustments[param];
+
+                ts.gradient[(ts.it%(10*ts.n))/(2*ts.n)-1] = 0.05f*(ts.score[1]-ts.score[0])/ts.adjustments[(ts
+                        .it%(10*ts.n))/(2*ts.n)-1];
+                System.out.println("current parameter:"+(ts.it%(10*ts.n))/(2*ts.n));
+                System.out.println(Arrays.toString(ts.gradient));
+
+                ts.score[0]=0; ts.score[1]=0;
+            }
+
+            if(ts.it%(10*ts.n)==0){
+                for(int i=0; i<5;i++){ts.curr_settings[i]+=ts.alpha*ts.gradient[i];}
+                System.out.println(Arrays.toString(ts.curr_settings));
+            }
+
+            if(ts.it%ts.n==0){
+
+                if((ts.it%(2*ts.n))/(ts.n)==1){ts.curr_settings[param] += 2*ts.adjustments[param];}
+                else{ts.curr_settings[param] -= ts.adjustments[param];}
+
+                System.out.println("current settings:"+Arrays.toString(ts.curr_settings));
+
+                game_set = new GameSettings(ts.curr_settings,search_para, false);
+            }
+
+            System.out.println(ts.it%ts.n+1 + "/"+ts.n);
+            System.out.println(game_set.SEARCH_CUTOFF + "," + game_set.MIN_PROB);
+
+            util.getVectors(game_set.DATABASE_SIZE);
+
+            ourWords.clear();
+            oppWords.clear();
+            bystanders.clear();
+            assassin = "";
+
+            System.out.println("GA");
+
+            ArrayList<String> card_set = new ArrayList<>();
+
+            if (game_set.PLAY_BOARD_FROM_FILE) {
+                loadBoardFromFile("board.txt");
+            } else {card_set=loadBoardFromOnline();}
+
+            for (int j = 0; j < 5; j++) {
+                for (int x = 0; x < 4; x++) {
+                    System.out.print(card_set.get(5 * j + x) + " ");
+                }
+                System.out.println(card_set.get(5 * j + 4));
+            }
+
+            num_subsets = new int[ourWords.size() + 1];
+            for (int k = 0; k < num_subsets.length; k++) {
+                int result = 1;
+                for (int i = 0; i < k; i++) {
+                    result *= (ourWords.size() - i);
+                }
+                for (int i = 1; i <= k; i++) {
+                    result /= i;
+                }
+                num_subsets[k] = result;
+            }
+            ArrayList<Hint> maximums = findBestHints();
+            System.out.println();
+            Scanner in = new Scanner(System.in);
+            int shift = (maximums.size() > 1) ? 2 : 1;
+            Hint final_hint = maximums.get(maximums.size() - shift);
+            System.out.println("hint: " + final_hint.word + "," + final_hint.targetIndices.length);
+
+            String[] intended = new String[final_hint.targetIndices.length];
+            for (int j = 0; j < intended.length; j++) {
+                intended[j] = ourWords.get(final_hint.targetIndices[j]);
+            }
+            System.out.println("intended cards: " + Arrays.toString(intended));
+            System.out.println("ours: " + ourWords);
+            System.out.println("opp: " + oppWords);
+
+            System.out.print("score increase:"); int inc = Integer.parseInt(in.nextLine());
+
+            if(inc!=-2) {
+                ts.score[(ts.it % (2 * ts.n)) / ts.n] += inc;
+                System.out.println(ts.score[(ts.it % (2 * ts.n)) / ts.n] / (ts.it % ts.n + 1));
+                ts.it++;
+            }
+
+            System.out.print("quit? ");
+            if (!in.nextLine().equals("")){
+                ts.save_settings("training_settings.txt");
+                break;
+            }
+
+            System.out.println();
+            in.close();
+        }
     }
     
     class Card extends JButton{
-        String type;
+        /**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		String type;
         int state = 0;
 
         public Card(String word, String type) {
@@ -700,7 +697,6 @@ public class Codenames_UI{
 }
 
 /**
- * @author etang
  * word: the word we are using as our hint
  * targetIndices: the indexes of the target words in ourWords which we are clueing for
  * prob: estimated probability that the user thinks all those words are similar to our hint word.
@@ -721,6 +717,7 @@ class Hint {
     }
 }
 
+/** Used for training to improve Codenames spymaster. Incomplete/broken feature. */
 class TrainState {
 
     String jsonString;
@@ -787,7 +784,7 @@ class TrainState {
     }
 }
 
-//Constants you can use to adjust game settings:
+//Constants to adjust game settings:
 class GameSettings {
 
     final float[] B = new float[]{-3.55106049399243f, 11.8332877194120f};
