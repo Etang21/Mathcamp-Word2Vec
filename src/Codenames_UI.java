@@ -265,7 +265,7 @@ public class Codenames_UI{
             }
 
             System.out.println();
-            //out.close();
+            in.close();
         }
     }
 
@@ -392,7 +392,7 @@ public class Codenames_UI{
     }
 
 
-    //Scans board from fileName, populates our ArrayLists:
+    /**Scans board from fileName, populates our ArrayLists with word data */
     private void loadBoardFromFile(String fileName) {
     	try {
 	    	File file = new File(fileName);
@@ -420,11 +420,9 @@ public class Codenames_UI{
     	}
     }
 
-    //Scans board from online, then prints to console
+    /** Scans board from online list of randome Codenames words, populates our ArrayLists with words. */
     private ArrayList<String> loadBoardFromOnline() throws IOException {
-    	URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
-        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/game-id-words.txt");
-        //URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/words.txt");
+    		URL url = new URL("https://raw.githubusercontent.com/jbowens/codenames/master/assets/original.txt");
         URLConnection con = url.openConnection();
         con.setConnectTimeout(5000);
         con.setReadTimeout(20000);
@@ -479,12 +477,15 @@ public class Codenames_UI{
         return card_set;
     }
 
+    /** Returns the estimated probability that the user will consider two words similar, given their
+     * cosine similarity. */
     public float prob(float sim) {
         float arg = game_set.B[0] + sim * game_set.B[1];
         return 1.0f / (float) (1 + exp(-arg));
     }
 
-    //Returns ArrayList of best hints, where position i stores the best hint for subsets of size i.
+    /** Returns ArrayList of best hints for current board. 
+     *  Position i stores the best hint for subsets of size i. */
     private ArrayList<Hint> findBestHints() throws IOException {
         ArrayList<Hint> bestHints = new ArrayList<>(ourWords.size());
         
@@ -494,7 +495,8 @@ public class Codenames_UI{
             bestHints.add(new Hint(0, "", new int[]{0}));
             
             int[] subset = new int[k];
-            checkSubsets(subset, 0, 0, bestHints); //Updates bestHints inside method.
+            ArrayList<String> excluded = excludedWords();
+            checkSubsets(subset, 0, 0, bestHints, excluded); //Updates bestHints inside method.
             if (bestHints.get(k - 1).prob < Math.pow(game_set.SEARCH_CUTOFF,k))
             	return bestHints;
         }
@@ -502,28 +504,18 @@ public class Codenames_UI{
     }
 
     //Updates maximums to store the best hint for the the subset size of currIndicesSubset size.
-    private void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums)
-            throws
-            IOException{
+    private void checkSubsets(int[] currIndicesSubset, int currSubsetSize, int nextIndex, ArrayList<Hint> maximums, ArrayList<String> excluded)
+            throws IOException {
         if (currSubsetSize == currIndicesSubset.length) { //If our subset array contains subsetSize (target) # words
-        	//Gets a list of all target words to guess:
-        	ArrayList<String> targetWords = new ArrayList<String>();
-        	for(int index: currIndicesSubset) {
-        		targetWords.add(ourWords.get(index));
-        	}
+	        	//Gets a list of all target words to guess:
+	        	ArrayList<String> targetWords = new ArrayList<String>();
+	        	for(int index: currIndicesSubset) {
+	        		targetWords.add(ourWords.get(index));
+	        	}
 
-            //Creates an array of the words which we must exclude from our search for hints
-            ArrayList<String> excluded = new ArrayList<String>(ourWords);
-            excluded.addAll(oppWords);
-            excluded.addAll(ourWords);
-            excluded.addAll(bystanders);
-            excluded.addAll(clues);
-
-            //NOTE: This bestHintForAllWords is the key method: take a list of words and strings to exclude, return the best hint. Can be modified.
             Hint bestHint = best_hint_for(targetWords, excluded);
-
             if(bestHint.prob > maximums.get(currIndicesSubset.length-1).prob) {
-            	maximums.set(currIndicesSubset.length-1, bestHint);
+            		maximums.set(currIndicesSubset.length-1, bestHint);
             }
             
             //Update progress bar:
@@ -541,7 +533,7 @@ public class Codenames_UI{
                 if(contains) continue;
 
                 currIndicesSubset[currSubsetSize] = j;
-                checkSubsets(currIndicesSubset, currSubsetSize + 1, j + 1, maximums);
+                checkSubsets(currIndicesSubset, currSubsetSize + 1, j + 1, maximums, excluded);
             }
         }
     }
@@ -567,6 +559,16 @@ public class Codenames_UI{
             }
         }
         return bestHint;
+    }
+    
+	/** Returns an array of the words which we must exclude from our search for hints */
+    private ArrayList<String> excludedWords() {
+        ArrayList<String> excluded = new ArrayList<String>(ourWords);
+        excluded.addAll(oppWords);
+        excluded.addAll(ourWords);
+        excluded.addAll(bystanders);
+        excluded.addAll(clues);
+        return excluded;
     }
     
     /** Returns an array containing the indices in words of our ArrayList of target words
@@ -669,7 +671,13 @@ public class Codenames_UI{
     }
 }
 
-class Hint{
+/**
+ * @author etang
+ * word: the word we are using as our hint
+ * targetIndices: the indexes of the target words in ourWords which we are clueing for
+ * prob: estimated probability that the user thinks all those words are similar to our hint word.
+ */
+class Hint {
     float prob;
     String word;
     int[] targetIndices;
@@ -685,7 +693,7 @@ class Hint{
     }
 }
 
-class TrainState{
+class TrainState {
 
     String jsonString;
 
