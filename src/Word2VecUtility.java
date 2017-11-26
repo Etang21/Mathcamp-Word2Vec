@@ -37,21 +37,25 @@ public class Word2VecUtility {
 
 	public float[] getVec(String word){return vectors.get(word);} //Maybe do this ignoring case?
 
-	/**
-	 * Following three methods are overloads of wordsCloseTo().
-	 * All find the closest words to the target word or vector.
-	 */
-	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) {
+	/** Finds words closest to targetWord, measured by cosine similarity. Returns numResults words. 
+	 * @throws WordNotFoundException */
+	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults) throws WordNotFoundException {
 		return wordsCloseTo(targetWord, numResults, new String[0]);
 	}
 	
-	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults, String[] excluded) {
+	/** Finds words closest to targetWord. Returns numResults words, excludes substrings and
+	 * superstrings of words in excluded. 
+	 * @throws WordNotFoundException */
+	public ArrayList<WordScore> wordsCloseTo(String targetWord, int numResults, String[] excluded) throws WordNotFoundException {
 		//Returns words close to target, but excludes any superstring or substring of that word.
 		float[] targetVec = getVec(targetWord);
-		System.out.println("Found " + targetWord);
+		if (targetVec == null) {
+			throw new WordNotFoundException(targetWord);
+		}
 		return wordsCloseTo(targetVec, numResults, excluded);
 	}
 
+	/** Returns numResults words closest to targetVec. */
 	public ArrayList<WordScore> wordsCloseTo(float[] targetVec, int numResults)  {
 		return wordsCloseTo(targetVec, numResults, new String[0]);
 	}
@@ -86,6 +90,7 @@ public class Word2VecUtility {
 		return results;
 	}
 	
+	/** Returns true if word is a substring or superstring of any word in excluded. */
 	private static boolean isExcluded(String word, String[] excluded) {
 		for(String ex: excluded) { //Screen out excluded words
 			if(isSubstring(word, ex)) { 
@@ -95,6 +100,7 @@ public class Word2VecUtility {
 		return false;
 	}
 
+	/** Returns true if clue is a substring or superstring of word */
 	public static boolean isSubstring(String clue, String word) {
         if (clue.toLowerCase().indexOf(word.toLowerCase()) != -1) return true;
         if (word.toLowerCase().indexOf(clue.toLowerCase()) != -1) return true;
@@ -127,14 +133,23 @@ public class Word2VecUtility {
 		return results;
 	}
 
-	public float printCosineSimilarity(String word1, String word2)  {
+	/** Prints the cosine similarity between two given words. Throws exception if either word not found. */
+	public float printCosineSimilarity(String word1, String word2) throws WordNotFoundException  {
 		float[] firstVec = getVec(word1);
 		float[] secondVec = getVec(word2);
-		float cosSim = cosineSimilarity(firstVec, secondVec);
-		System.out.println("Cosine similarity between " + word1 + " and " + word2 + ": " + cosSim);
-		return cosSim;
+		
+		if (firstVec == null) {
+			throw new WordNotFoundException(word1);
+		} else if (secondVec == null) {
+			throw new WordNotFoundException(word2);
+		} else {
+			float cosSim = cosineSimilarity(firstVec, secondVec);
+			System.out.println("Cosine similarity between " + word1 + " and " + word2 + ": " + cosSim);
+			return cosSim;
+		}
 	}
 
+	/** Returns cosine similarity between two vectors */
 	public float cosineSimilarity(float[] vec1, float[] vec2) {
 		//Cosine similarity is defined as (A . B) / (|A|*|B|), measures similarity between two vecs
 		//Could use map and reduce funcs to make this code more concise.
@@ -206,8 +221,8 @@ public class Word2VecUtility {
 }
 
 
+//A helper class which stores a word and associated "score":
 class WordScore implements Comparable<WordScore> {
-	//A helper class which stores a word and associated "score"
 	public String word;
 	public float score;
 	
@@ -223,5 +238,16 @@ class WordScore implements Comparable<WordScore> {
 	@Override
 	public int compareTo(WordScore other) {
 		return Float.compare(this.score, other.score);
+	}
+}
+
+//Exception thrown when word not found in vectors:
+class WordNotFoundException extends Exception {
+	private static final long serialVersionUID = 1L;
+	public WordNotFoundException() {
+		super("word not found in vector dictionary");
+	}
+	public WordNotFoundException(String word) {
+		super("\"" + word + "\" not found in vector dictionary");
 	}
 }
