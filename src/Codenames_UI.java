@@ -319,8 +319,8 @@ public class Codenames_UI{
 
             //Store intended words:
             String[] intended = new String[final_hint.s.length];
-            for (int targetIndex : final_hint.s) {
-                intended[targetIndex] = words.get(final_hint.s[targetIndex]);
+            for (int i = 0; i < final_hint.s.length; i++) {
+                intended[i] = words.get(final_hint.s[i]);
             }
             
             //Print clue:
@@ -411,7 +411,6 @@ public class Codenames_UI{
         });
     }
 
-    //MARK: Input board methods
 
     //Scans board from fileName, populates our ArrayLists:
     private void loadBoardFromFile(String fileName) {
@@ -567,64 +566,26 @@ public class Codenames_UI{
         }
     }
     
-    /** Returns the best hint to clue for all words in targetWords, excluding substrings/superstrings of excluded. */
+    // Returns the best hint to clue for all words in targetWords, excluding substrings/superstrings of excluded.
     private Hint best_hint_for(ArrayList<String> targetWords, ArrayList<String> excluded) {
     	
         //Finds our candidate hints: the words closest to the sum/average of our target words:
         float[] avgVec = averageVectorFor(targetWords);
         ArrayList<WordScore> candidates = util.wordsCloseTo(avgVec, game_set.NUM_CANDIDATES, excluded.toArray(new String[excluded.size()]));
 
-        //For all candidates, evaluate probability of guessing target words, and update bestHint if it's good:
         Hint bestHint = new Hint(-1, "", null);
         for (int i = 0; i < game_set.NUM_CANDIDATES; i++) {
-            float prob = 1.0f;
-            float min_prob = 1.0f;
-
-            //Obtain a candidate hint word, with String curr_word and vec hint.
+            //For all candidates, evaluate distance to target words and opponent words. Update bestHint if best.
             String curr_word = candidates.get(i).word;
             float[] hint = util.vectors.get(curr_word);
+            float hintProb = hintProbability(hint, targetWords, game_set);
 
-            if(clues.contains(curr_word)) continue;
-
-            //For each word in our subset, we check how close our candidate is to that word.
-            for (String targetWord : targetWords) {
-                float[] targetVec = util.getVec(targetWord);
-                float curr_prob = prob(util.cosineSimilarity(hint, targetVec));
-                prob *= curr_prob;
-                if (curr_prob < min_prob) min_prob = curr_prob;
-            }
-
-            float max_prob_opp = 0;
-            float max_prob_by = 0;
-
-            for (String s : opp) {
-                float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
-                if (curr_prob > max_prob_opp) {
-                    max_prob_opp = curr_prob;
-                }
-            }
-
-            for (String s : bystanders) {
-                float curr_prob = prob(util.cosineSimilarity(hint, util.getVec(s)));
-                if (curr_prob > max_prob_opp) {
-                    max_prob_by = curr_prob;
-                }
-            }
-
-            float ass_prob=0;
-            if(!assassin.equals("")) {ass_prob = prob(util.cosineSimilarity(hint, util.getVec(assassin)));}
-
-            //If this hint meets constraints and is best, replace bestHint.
-            if (min_prob > game_set.MIN_PROB && ass_prob < game_set.ASSASSIN_THRESHOLD && max_prob_opp < game_set
-                    .OPPONENT_THRESHOLD &&
-                    max_prob_by <
-                            game_set.BYSTANDER_THRESHOLD && prob > bestHint.prob) {
-                //Convert our list of words to a list of indices, then return.
+            if (hintProb > bestHint.prob && isSafeHint(hint, game_set)) {
                 int[] indices = new int[targetWords.size()];
                 for (int j = 0; j < targetWords.size(); j++) {
                     indices[j] = words.indexOf(targetWords.get(j));
                 }
-                bestHint = new Hint(prob, curr_word, indices);
+                bestHint = new Hint(hintProb, curr_word, indices);
             }
         }
         return bestHint;
@@ -646,6 +607,38 @@ public class Codenames_UI{
         return avgVec;
     }
 
+    /** Returns true if our hint is a safe distance away from opponents, bystanders, and assassin.
+     *  Thresholds for safety are defined in the GameSettings we pass in. */
+    private boolean isSafeHint(float[] hint, GameSettings game_set) {
+        for (String s : opp) {
+            if (prob(util.cosineSimilarity(hint, util.getVec(s))) > game_set.OPPONENT_THRESHOLD) {
+            		return false;
+            }
+        }
+
+        for (String s : bystanders) {
+	        	if (prob(util.cosineSimilarity(hint, util.getVec(s))) > game_set.BYSTANDER_THRESHOLD) {
+	        		return false;
+	        }
+        }
+        return assassin.equals("") || prob(util.cosineSimilarity(hint, util.getVec(assassin))) < game_set.ASSASSIN_THRESHOLD;
+    }
+    
+    /** Returns the estimated probability that user guesses all the words in targetWords from hint.
+     * Returns 0 if any estimated probability is less than GameSettings minimum probability threshold. */
+    private float hintProbability(float[] hint, ArrayList<String> targetWords, GameSettings game_set) {
+        float prob = 1.0f;
+    		for (String targetWord : targetWords) {
+            float[] targetVec = util.getVec(targetWord);
+            float curr_prob = prob(util.cosineSimilarity(hint, targetVec));
+            if (curr_prob < game_set.MIN_PROB) {
+        			return 0f;
+            }
+            prob *= curr_prob;
+        }
+    		return prob;
+    }
+    
     class Card extends JButton{
         String type;
         int state = 0;
