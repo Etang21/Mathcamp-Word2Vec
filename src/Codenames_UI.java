@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Scanner;
-import java.util.stream.IntStream;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -631,7 +630,7 @@ public class Codenames_UI{
         }
     		return prob;
     }
-
+    
     /** Just checks if the array contains the query. */
     private boolean arrayContains(int[] arr, int query) {
     		for (int element : arr) {
